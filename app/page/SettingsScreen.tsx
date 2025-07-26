@@ -1,0 +1,202 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  SafeAreaView,
+  Alert,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const settingsOptions = [
+  {
+    id: 'account',
+    title: 'Account',
+    icon: 'person-outline',
+    description: 'Manage your account settings',
+  },
+  {
+    id: 'preferences',
+    title: 'Preferences',
+    icon: 'settings-outline',
+    description: 'App preferences and defaults',
+  },
+  {
+    id: 'storage',
+    title: 'Storage & Sync',
+    icon: 'cloud-outline',
+    description: 'Manage data storage and synchronization',
+  },
+  {
+    id: 'permissions',
+    title: 'Permissions',
+    icon: 'shield-checkmark-outline',
+    description: 'Camera, microphone, and location access',
+  },
+  {
+    id: 'export',
+    title: 'Export Data',
+    icon: 'download-outline',
+    description: 'Export your data and records',
+  },
+  {
+    id: 'help',
+    title: 'Help & Support',
+    icon: 'help-circle-outline',
+    description: 'Get help and contact support',
+  },
+  {
+    id: 'about',
+    title: 'About',
+    icon: 'information-circle-outline',
+    description: 'App version and information',
+  },
+];
+
+export default function SettingsScreen() {
+  const handleSettingPress = (settingId: string) => {
+    switch (settingId) {
+      case 'about':
+        Alert.alert(
+          'About Chert',
+          'Chert v1.0.0\n\nGeneralized plug-and-play voice & image conversational agent for human-in-the-loop field data recording.\n\n© 2025 Mergai-org'
+        );
+        break;
+      case 'help':
+        Alert.alert(
+          'Help & Support',
+          'For help with Chert, please visit our documentation or contact support at support@mergai.org'
+        );
+        break;
+      case 'permissions':
+        Alert.alert(
+          'Permissions',
+          'Chert requires camera, microphone, and location permissions for optimal data recording functionality.'
+        );
+        break;
+      default:
+        Alert.alert('Coming Soon', `${settingId} settings will be available in a future update.`);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#007AFF', '#0056CC']}
+        style={styles.header}
+      >
+        <Text style={styles.title}>Settings</Text>
+      </LinearGradient>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.section}>
+          {settingsOptions.map((option) => (
+            <TouchableOpacity
+              key={option.id}
+              style={styles.settingItem}
+              onPress={() => handleSettingPress(option.id)}
+            >
+              <View style={styles.settingIconContainer}>
+                <Ionicons name={option.icon as any} size={24} color="#007AFF" />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>{option.title}</Text>
+                <Text style={styles.settingDescription}>{option.description}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.versionContainer}>
+            <Text style={styles.versionText}>Chert v1.0.0</Text>
+            <Text style={styles.versionSubtext}>
+              Powered by OpenAI • Built with React Native
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  header: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  section: {
+    marginTop: 25,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  settingIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E3F2FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  settingDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  versionContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  versionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 5,
+  },
+  versionSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+});

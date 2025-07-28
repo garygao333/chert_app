@@ -199,10 +199,34 @@ chertapp/
 │   └── types/          # TypeScript type definitions
 ├── backend/            # Python FastAPI backend
 │   ├── main.py         # FastAPI application
+│   │   - Sets up the FastAPI server and defines API endpoints
+│   │   - Configures CORS middleware for cross-origin requests
+│   │   - Initializes core services (Supabase client, VoiceAgent)
+│   │   - Handles startup and shutdown events
 │   ├── voice_agent.py  # LangGraph AI agent
+│   │   - Implements the voice processing workflow using LangGraph
+│   │   - Handles voice command interpretation and execution
+│   │   - Manages workflow planning and state management
+│   │   - Integrates with AI models for artifact detection and analysis
+│   │   - Processes voice recordings and generates responses
 │   ├── supabase_client.py # Database operations
+│   │   - Manages database connections to Supabase
+│   │   - Implements CRUD operations for projects and data records
+│   │   - Handles schema management and data validation
+│   │   - Manages authentication and authorization
+│   │   - Implements activity logging and audit trails
 │   ├── models.py       # Pydantic models
+│   │   - Defines data schemas using Pydantic
+│   │   - Implements validation for API requests and responses
+│   │   - Defines database schemas for Supabase
+│   │   - Handles type definitions for the entire application
+│   │   - Implements data transformation utilities
 │   └── schema.sql      # Database schema
+│       - Defines the database structure in SQL
+│       - Specifies tables for projects, data records, and users
+│       - Implements relationships between database entities
+│       - Defines indexes for query optimization
+│       - Sets up constraints and validation rules
 └── README.md
 ```
 

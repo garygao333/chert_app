@@ -1,11 +1,14 @@
 // Supabase configuration and client setup
-// This will be configured when integrating with the actual Supabase backend
-
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 
-// TODO: Replace with actual Supabase URL and anon key
-const supabaseUrl = 'https://your-project.supabase.co';
-const supabaseAnonKey = 'your-anon-key';
+// Get configuration from environment variables
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase configuration. Please check your .env file and ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set.');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -98,6 +101,51 @@ export interface Database {
           description: string;
           metadata?: any;
           created_at?: string;
+        };
+      };
+      samples: {
+        Row: {
+          id: string;
+          class: string;
+          weight: number;
+          dimensions: string;
+          color: string;
+          material: string;
+          location: string;
+          image_url: string;
+          project_id: string;
+          confidence: number;
+          metadata: any;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          class?: string;
+          weight?: number;
+          dimensions?: string;
+          color?: string;
+          material?: string;
+          location?: string;
+          image_url?: string;
+          project_id: string;
+          confidence?: number;
+          metadata?: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          class?: string;
+          weight?: number;
+          dimensions?: string;
+          color?: string;
+          material?: string;
+          location?: string;
+          image_url?: string;
+          confidence?: number;
+          metadata?: any;
+          updated_at?: string;
         };
       };
     };

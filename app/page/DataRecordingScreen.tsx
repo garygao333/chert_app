@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import type { StackNavigationProp, RouteProp } from '@react-navigation/stack';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { Audio } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import Constants from 'expo-constants';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../types';
+import { ApiService } from '../services/api';
 
 type DataRecordingNavigationProp = StackNavigationProp<RootStackParamList>;
 type DataRecordingRouteProp = RouteProp<RootStackParamList, 'DataRecording'>;
@@ -49,112 +54,432 @@ export default function DataRecordingScreen() {
     {
       id: '1',
       type: 'assistant',
-      content: 'Hi! I\'m ready to help you record field data. You can speak naturally, take photos, or type. What would you like to record?',
+      content: 'Hi! I\'m your AI archaeological assistant. I can help you record field data through voice, photos, or text. What would you like to document today?',
       timestamp: new Date(),
     }
   ]);
   const [currentRecord, setCurrentRecord] = useState<DataField[]>([]);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [workflowPlan, setWorkflowPlan] = useState<any>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const { projectId, tableName } = route.params;
 
-  const startRecording = async () => {
-    setIsRecording(true);
-    
-    // Animate recording button
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.2,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+  // Initialize audio permissions and test backend connection
+  useEffect(() => {
+    (async () => {
+      // Test backend connection first
+      try {
+        const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
+        console.log('Testing backend connection to:', API_URL);
+        
+        const response = await fetch(`${API_URL}/health`);
+        const data = await response.json();
+        console.log('Backend connected:', data);
+        
+        // Add system message about backend status
+        const backendMessage: ConversationMessage = {
+          id: 'backend-status',
+          type: 'system',
+          content: `🔗 Backend connected! Voice AI agent is ready.\n\nServer: ${API_URL}\nStatus: ${data.status}`,
+          timestamp: new Date(),
+        };
+        setConversation(prev => [...prev, backendMessage]);
+      } catch (error) {
+        console.error('Backend connection failed:', error);
+        const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
+        const errorMessage: ConversationMessage = {
+          id: 'backend-error',
+          type: 'system',
+          content: `⚠️ Backend connection failed.\n\nTrying to connect to: ${API_URL}\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          timestamp: new Date(),
+        };
+        setConversation(prev => [...prev, errorMessage]);
+      }
 
-    // TODO: Implement actual audio recording with expo-av
-    console.log('Starting audio recording...');
+      // Request audio permissions
+      try {
+        const { status } = await Audio.requestPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Audio recording permission is required to use voice input.');
+        } else {
+          console.log('Audio permissions granted');
+        }
+      } catch (error) {
+        console.error('Permission request failed:', error);
+      }
+    })();
+  }, []);
+
+  // Helper functions
+  const generateAssistantResponse = (result: any): string => {
+    if (!result.extracted_data || Object.keys(result.extracted_data).length === 0) {
+      return `I heard: "${result.transcription}"\n\nI'm analyzing this information. Could you provide more details about what you found?`;
+    }
+
+    const fields = Object.entries(result.extracted_data)
+      .map(([key, value]) => `• ${key.replace(/_/g, ' ')}: ${value}`)
+      .join('\n');
+
+    let response = `Great! I've extracted the following information:\n\n${fields}\n\n`;
+    
+    if (result.confidence < 0.7) {
+      response += "I'm not entirely confident about some details. Could you clarify or confirm?";
+    } else if (result.workflow_plan?.steps?.length > 0) {
+      response += `${result.reasoning}\n\nNext steps: ${result.workflow_plan.steps.map((s: any) => s.prompt || s.type).join(', ')}`;
+    } else {
+      response += "Does this look correct? Should I commit this record to the database?";
+    }
+
+    return response;
+  };
+
+  const updateCurrentRecord = (extractedData: Record<string, any>, confidence: number) => {
+    const newFields: DataField[] = Object.entries(extractedData).map(([key, value]) => ({
+      name: key,
+      value: String(value),
+      confidence: confidence,
+      source: 'voice' as const
+    }));
+
+    setCurrentRecord(prev => {
+      // Merge with existing fields, updating if field exists
+      const merged = [...prev];
+      newFields.forEach(newField => {
+        const existingIndex = merged.findIndex(f => f.name === newField.name);
+        if (existingIndex >= 0) {
+          merged[existingIndex] = newField;
+        } else {
+          merged.push(newField);
+        }
+      });
+      return merged;
+    });
+  };
+
+  const startRecording = async () => {
+    try {
+      setIsRecording(true);
+      
+      // Animate recording button
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.2,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      console.log('Starting audio recording...');
+      
+      // Configure audio recording with proper iOS settings
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        playThroughEarpieceAndroid: false,
+        shouldDuckAndroid: true,
+        staysActiveInBackground: false,
+      });
+
+      // Simplified recording options that work on both platforms
+      const recordingOptions = Audio.RecordingOptionsPresets.HIGH_QUALITY;
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(recordingOptions);
+      setRecording(newRecording);
+      
+      console.log('Recording started');
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Recording Error', `Failed to start audio recording: ${errorMessage}`);
+      setIsRecording(false);
+      scaleAnim.stopAnimation();
+      scaleAnim.setValue(1);
+    }
   };
 
   const stopRecording = async () => {
-    setIsRecording(false);
-    setIsProcessing(true);
-    scaleAnim.stopAnimation();
-    scaleAnim.setValue(1);
+    if (!recording) return;
 
-    // Simulate processing
-    setTimeout(() => {
-      const newMessage: ConversationMessage = {
-        id: Date.now().toString(),
-        type: 'user',
-        content: 'I found a ceramic sherd, approximately 3cm in diameter, reddish-brown color, possibly from a storage vessel',
-        timestamp: new Date(),
-        metadata: {
-          confidence: 0.85,
-          suggestedFields: ['artifact_type', 'dimensions', 'color', 'material'],
-        }
-      };
+    try {
+      setIsRecording(false);
+      setIsProcessing(true);
+      scaleAnim.stopAnimation();
+      scaleAnim.setValue(1);
 
-      const assistantResponse: ConversationMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: 'Great! I\'ve identified this as a ceramic artifact. Let me map this to your database:\n\n• Artifact Type: Ceramic Sherd\n• Dimensions: 3cm diameter\n• Color: Reddish-brown\n• Vessel Type: Storage vessel (inferred)\n\nDoes this look correct? Should I add any additional information?',
-        timestamp: new Date(),
-        metadata: {
-          confidence: 0.85,
-        }
-      };
-
-      setConversation(prev => [...prev, newMessage, assistantResponse]);
+      console.log('Stopping recording...');
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
       
-      // Update current record
-      setCurrentRecord([
-        { name: 'artifact_type', value: 'Ceramic Sherd', confidence: 0.9, source: 'voice' },
-        { name: 'dimensions', value: '3cm diameter', confidence: 0.85, source: 'voice' },
-        { name: 'color', value: 'Reddish-brown', confidence: 0.9, source: 'voice' },
-        { name: 'vessel_type', value: 'Storage vessel', confidence: 0.7, source: 'voice' },
-      ]);
+      if (uri) {
+        console.log('Recording stopped, processing audio...');
+        
+        // Convert audio file to blob for API
+        const response = await fetch(uri);
+        const audioBlob = await response.blob();
+        
+        // Process with backend AI
+        const result = await ApiService.processVoiceInput(audioBlob, projectId);
+        
+        // Add user message (transcription)
+        const userMessage: ConversationMessage = {
+          id: Date.now().toString(),
+          type: 'user',
+          content: result.transcription,
+          timestamp: new Date(),
+          metadata: {
+            confidence: result.confidence,
+            audioFile: uri,
+          }
+        };
+
+        // Generate assistant response based on AI analysis
+        const assistantContent = generateAssistantResponse(result);
+        const assistantMessage: ConversationMessage = {
+          id: (Date.now() + 1).toString(),
+          type: 'assistant',
+          content: assistantContent,
+          timestamp: new Date(),
+          metadata: {
+            confidence: result.confidence,
+            suggestedFields: result.suggested_fields,
+          }
+        };
+
+        setConversation(prev => [...prev, userMessage, assistantMessage]);
+        
+        // Update current record with extracted data
+        updateCurrentRecord(result.extracted_data, result.confidence);
+        
+        // Store workflow plan if provided
+        if (result.workflow_plan) {
+          setWorkflowPlan(result.workflow_plan);
+        }
+      }
       
+      setRecording(null);
       setIsProcessing(false);
-    }, 2000);
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      Alert.alert('Processing Error', 'Failed to process audio recording');
+      setIsProcessing(false);
+      setRecording(null);
+    }
   };
 
-  const sendTextMessage = () => {
+  const sendTextMessage = async () => {
     if (!textInput.trim()) return;
 
-    const newMessage: ConversationMessage = {
+    const userMessage: ConversationMessage = {
       id: Date.now().toString(),
       type: 'user',
       content: textInput,
       timestamp: new Date(),
     };
 
-    setConversation(prev => [...prev, newMessage]);
+    setConversation(prev => [...prev, userMessage]);
+    const inputText = textInput;
     setTextInput('');
+    setIsProcessing(true);
 
-    // Simulate assistant response
-    setTimeout(() => {
-      const response: ConversationMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: 'I understand. Let me help you with that information.',
-        timestamp: new Date(),
-      };
-      setConversation(prev => [...prev, response]);
-    }, 1000);
+    try {
+      // Create a text-to-speech audio for processing
+      // For now, we'll send text directly to a text processing endpoint
+      // In the future, we could convert text to audio and use the voice pipeline
+      
+      // Mock audio blob for text input - this is a temporary solution
+      // The backend should have a separate text processing endpoint
+      const textBlob = new Blob([inputText], { type: 'text/plain' });
+      
+      // For now, we'll simulate the AI response
+      // TODO: Create a separate text processing endpoint in the backend
+      setTimeout(async () => {
+        try {
+          // Simulate AI processing of text input
+          const mockResult = {
+            transcription: inputText,
+            extracted_data: extractDataFromText(inputText),
+            confidence: 0.9,
+            suggested_fields: ['artifact_type', 'material', 'color', 'dimensions'],
+            reasoning: 'Text input processed and analyzed for archaeological data'
+          };
+
+          const assistantContent = generateAssistantResponse(mockResult);
+          const assistantMessage: ConversationMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: assistantContent,
+            timestamp: new Date(),
+            metadata: {
+              confidence: mockResult.confidence,
+              suggestedFields: mockResult.suggested_fields,
+            }
+          };
+          
+          setConversation(prev => [...prev, assistantMessage]);
+          updateCurrentRecord(mockResult.extracted_data, mockResult.confidence);
+          setIsProcessing(false);
+        } catch (error) {
+          console.error('Text processing error:', error);
+          const errorMessage: ConversationMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: 'I had trouble processing that text. Could you try rephrasing or speaking instead?',
+            timestamp: new Date(),
+          };
+          setConversation(prev => [...prev, errorMessage]);
+          setIsProcessing(false);
+        }
+      }, 1500);
+    } catch (error) {
+      console.error('Text message error:', error);
+      setIsProcessing(false);
+    }
   };
 
-  const takePhoto = () => {
-    // TODO: Implement camera functionality with expo-image-picker
-    Alert.alert('Camera', 'Camera functionality will be implemented here');
+  // Simple text analysis function
+  const extractDataFromText = (text: string): Record<string, any> => {
+    const data: Record<string, any> = {};
+    const lowerText = text.toLowerCase();
+
+    // Simple pattern matching for common archaeological terms
+    if (lowerText.includes('ceramic') || lowerText.includes('pottery')) {
+      data.artifact_type = 'Ceramic';
+      data.material = 'Ceramic';
+    } else if (lowerText.includes('stone') || lowerText.includes('lithic')) {
+      data.artifact_type = 'Lithic';
+      data.material = 'Stone';
+    } else if (lowerText.includes('metal') || lowerText.includes('bronze') || lowerText.includes('iron')) {
+      data.artifact_type = 'Metal';
+      data.material = 'Metal';
+    }
+
+    // Extract dimensions
+    const dimensionMatch = text.match(/(\d+(?:\.\d+)?)\s*(cm|mm|m)/i);
+    if (dimensionMatch) {
+      data.dimensions = `${dimensionMatch[1]}${dimensionMatch[2]}`;
+    }
+
+    // Extract colors
+    const colors = ['red', 'brown', 'black', 'white', 'gray', 'grey', 'yellow', 'orange', 'blue', 'green'];
+    colors.forEach(color => {
+      if (lowerText.includes(color)) {
+        data.color = color.charAt(0).toUpperCase() + color.slice(1);
+      }
+    });
+
+    // Extract context information
+    if (lowerText.includes('surface') || lowerText.includes('ground')) {
+      data.context = 'Surface find';
+    } else if (lowerText.includes('layer') || lowerText.includes('level')) {
+      data.context = 'Stratigraphic context';
+    }
+
+    return data;
   };
 
-  const commitRecord = () => {
+  const takePhoto = async () => {
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Camera permission is required to take photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setIsProcessing(true);
+
+        // Add user message about taking photo
+        const photoMessage: ConversationMessage = {
+          id: Date.now().toString(),
+          type: 'user',
+          content: '📸 Photo taken',
+          timestamp: new Date(),
+          metadata: {
+            imageFiles: [imageUri],
+          }
+        };
+        setConversation(prev => [...prev, photoMessage]);
+
+        try {
+          // Process image with backend AI
+          const imageResult = await ApiService.processImage(imageUri, projectId);
+          
+          // Generate response based on image analysis
+          let content = 'I\'ve analyzed your photo. ';
+          if (imageResult.detections && imageResult.detections.length > 0) {
+            content += `I detected ${imageResult.detections.length} objects:\n\n`;
+            imageResult.detections.forEach((detection, index) => {
+              content += `• ${detection.label} (${Math.round(detection.confidence * 100)}% confidence)\n`;
+            });
+          }
+          
+          if (imageResult.extracted_data && Object.keys(imageResult.extracted_data).length > 0) {
+            content += '\nExtracted data:\n';
+            Object.entries(imageResult.extracted_data).forEach(([key, value]) => {
+              content += `• ${key.replace(/_/g, ' ')}: ${value}\n`;
+            });
+          }
+
+          const assistantMessage: ConversationMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: content || 'I\'ve processed your photo. Could you tell me more about what I\'m looking at?',
+            timestamp: new Date(),
+            metadata: {
+              confidence: imageResult.confidence,
+            }
+          };
+
+          setConversation(prev => [...prev, assistantMessage]);
+          
+          // Update current record with image data
+          if (imageResult.extracted_data) {
+            updateCurrentRecord(imageResult.extracted_data, imageResult.confidence);
+          }
+          
+          setIsProcessing(false);
+        } catch (error) {
+          console.error('Image processing error:', error);
+          const errorMessage: ConversationMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: 'I had trouble analyzing the photo. The image has been saved, but you may need to describe what you see.',
+            timestamp: new Date(),
+          };
+          setConversation(prev => [...prev, errorMessage]);
+          setIsProcessing(false);
+        }
+      }
+    } catch (error) {
+      console.error('Camera error:', error);
+      Alert.alert('Camera Error', 'Failed to access camera');
+      setIsProcessing(false);
+    }
+  };
+
+  const commitRecord = async () => {
+    if (currentRecord.length === 0) {
+      Alert.alert('No Data', 'Please record some data before committing.');
+      return;
+    }
+
     Alert.alert(
       'Commit Record',
       'Are you sure you want to commit this record to the database?',
@@ -162,15 +487,175 @@ export default function DataRecordingScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Commit',
-          onPress: () => {
-            // TODO: Save to Supabase
-            console.log('Committing record:', currentRecord);
-            Alert.alert('Success', 'Record committed successfully!');
-            navigation.goBack();
+          onPress: async () => {
+            try {
+              // Convert current record to the format expected by the API
+              const recordData: Record<string, any> = {};
+              currentRecord.forEach(field => {
+                recordData[field.name] = field.value;
+              });
+
+              // Add metadata
+              const metadata: any = {
+                recordingMethod: 'voice' as const, // Will be determined by majority source
+                confidence: currentRecord.reduce((sum, field) => sum + field.confidence, 0) / currentRecord.length,
+                field_sources: currentRecord.reduce((sources, field) => {
+                  sources[field.name] = field.source;
+                  return sources;
+                }, {} as Record<string, string>),
+                timestamp: new Date().toISOString(),
+              };
+
+              // Determine primary recording method
+              const sourceCounts = currentRecord.reduce((counts, field) => {
+                counts[field.source] = (counts[field.source] || 0) + 1;
+                return counts;
+              }, {} as Record<string, number>);
+              
+              const primarySource = Object.entries(sourceCounts)
+                .sort(([,a], [,b]) => b - a)[0][0] as 'voice' | 'image' | 'manual';
+              
+              metadata.recordingMethod = primarySource;
+
+              // Create data record via API
+              await ApiService.createDataRecord({
+                projectId: projectId,
+                tableName: tableName || 'samples',
+                data: recordData,
+                metadata: metadata,
+                confidence: metadata.confidence,
+              });
+
+              Alert.alert('Success', 'Record committed successfully!');
+              
+              // Add success message to conversation
+              const successMessage: ConversationMessage = {
+                id: Date.now().toString(),
+                type: 'system',
+                content: '✅ Record committed to database successfully!',
+                timestamp: new Date(),
+              };
+              setConversation(prev => [...prev, successMessage]);
+              
+              // Clear current record
+              setCurrentRecord([]);
+              
+              // Navigate back after a short delay
+              setTimeout(() => {
+                navigation.goBack();
+              }, 1500);
+            } catch (error) {
+              console.error('Commit error:', error);
+              Alert.alert('Error', 'Failed to commit record. Please try again.');
+            }
           }
         }
       ]
     );
+  };
+
+  const getGPSLocation = async () => {
+    try {
+      // Request location permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Location permission is required to add GPS coordinates.');
+        return;
+      }
+
+      setIsProcessing(true);
+      const location = await Location.getCurrentPositionAsync({});
+      
+      const gpsMessage: ConversationMessage = {
+        id: Date.now().toString(),
+        type: 'system',
+        content: `📍 GPS location recorded: ${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`,
+        timestamp: new Date(),
+      };
+      
+      setConversation(prev => [...prev, gpsMessage]);
+      
+      // Add GPS coordinates to current record
+      const gpsField: DataField = {
+        name: 'gps_coordinates',
+        value: `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`,
+        confidence: 1.0,
+        source: 'manual'
+      };
+      
+      setCurrentRecord(prev => [...prev, gpsField]);
+      setIsProcessing(false);
+    } catch (error) {
+      console.error('GPS error:', error);
+      Alert.alert('GPS Error', 'Failed to get current location');
+      setIsProcessing(false);
+    }
+  };
+
+  // Test function to verify backend voice agent works
+  const testVoiceAgent = async () => {
+    setIsProcessing(true);
+    
+    try {
+      // Get API URL from config
+      const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
+      
+      // Create a simple test audio blob (empty for now)
+      const testText = "I found a ceramic sherd, 5 cm diameter, reddish brown color";
+      
+      // For testing, we'll create a mock audio file
+      const testBlob = new Blob([testText], { type: 'audio/wav' });
+      
+      console.log('Testing voice agent with mock data...');
+      console.log('API URL:', API_URL);
+      
+      // Use a valid test UUID or the actual projectId if it's valid
+      const testProjectId = projectId?.length === 36 ? projectId : '550e8400-e29b-41d4-a716-446655440000';
+      
+      // Test the backend API directly
+      const formData = new FormData();
+      formData.append('audio_file', testBlob, 'test.wav');
+      formData.append('project_id', testProjectId);
+      
+      const response = await fetch(`${API_URL}/voice/process`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Voice agent response:', result);
+      
+      // Add the results to conversation
+      const testMessage: ConversationMessage = {
+        id: Date.now().toString(),
+        type: 'system',
+        content: `🧪 Backend Test Results:\n\nTranscription: ${result.transcription}\nExtracted Data: ${JSON.stringify(result.extracted_data, null, 2)}\nConfidence: ${result.confidence}\nReasoning: ${result.reasoning}`,
+        timestamp: new Date(),
+      };
+      
+      setConversation(prev => [...prev, testMessage]);
+      
+      if (result.extracted_data) {
+        updateCurrentRecord(result.extracted_data, result.confidence || 0.8);
+      }
+      
+    } catch (error) {
+      console.error('Voice agent test failed:', error);
+      const errorMessage: ConversationMessage = {
+        id: Date.now().toString(),
+        type: 'system',
+        content: `❌ Backend test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date(),
+      };
+      setConversation(prev => [...prev, errorMessage]);
+    }
+    
+    setIsProcessing(false);
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -287,6 +772,11 @@ export default function DataRecordingScreen() {
             <Text style={styles.actionButtonText}>Photo</Text>
           </TouchableOpacity>
           
+          <TouchableOpacity style={styles.actionButton} onPress={testVoiceAgent}>
+            <Ionicons name="flask" size={24} color="#FF6B35" />
+            <Text style={styles.actionButtonText}>Test AI</Text>
+          </TouchableOpacity>
+          
           <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
             <TouchableOpacity
               style={[styles.recordButton, isRecording && styles.recordingButton]}
@@ -301,7 +791,7 @@ export default function DataRecordingScreen() {
             </TouchableOpacity>
           </Animated.View>
           
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity style={styles.actionButton} onPress={getGPSLocation}>
             <Ionicons name="location" size={24} color="#007AFF" />
             <Text style={styles.actionButtonText}>GPS</Text>
           </TouchableOpacity>
@@ -481,10 +971,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 5,
   },
   actionButton: {
     alignItems: 'center',
-    padding: 10,
+    padding: 8,
+    minWidth: 60,
   },
   actionButtonText: {
     fontSize: 12,

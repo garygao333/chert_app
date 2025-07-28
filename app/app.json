@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "Chert",
+    "slug": "chert-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,17 +13,38 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.chert.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app needs access to microphone for voice recording of archaeological data.",
+        "NSCameraUsageDescription": "This app needs access to camera for photographing archaeological artifacts.",
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to record GPS coordinates of archaeological finds."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.chert.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-av",
+      "expo-image-picker",
+      "expo-location"
+    ],
+    "extra": {
+      "apiUrl": "http://10.31.38.209:8000"
     }
   }
 }

@@ -11,4 +11,3 @@ python-dotenv>=1.0.0
 pydantic>=2.7.4
 aiofiles>=23.2.1
 httpx>=0.25.0
-pillow>=10.0.1

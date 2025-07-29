@@ -10,17 +10,17 @@ import sys
 import os
 from pathlib import Path
 
-def install_requirements():
-    """Install Python requirements"""
-    requirements_file = Path(__file__).parent / "requirements.txt"
+# def install_requirements():
+#     """Install Python requirements"""
+#     requirements_file = Path(__file__).parent / "requirements.txt"
     
-    if requirements_file.exists():
-        print("Installing Python dependencies...")
-        subprocess.check_call([
-            sys.executable, "-m", "pip", "install", "-r", str(requirements_file)
-        ])
-    else:
-        print("Warning: requirements.txt not found")
+#     if requirements_file.exists():
+#         print("Installing Python dependencies...")
+#         subprocess.check_call([
+#             sys.executable, "-m", "pip", "install", "-r", str(requirements_file)
+#         ])
+#     else:
+#         print("Warning: requirements.txt not found")
 
 def check_env_file():
     """Check if .env file exists and warn if not configured"""
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     print("=== Chert Backend API Startup ===")
     
     # Install dependencies
-    install_requirements()
+    #install_requirements()
     
     # Check environment configuration
     env_configured = check_env_file()

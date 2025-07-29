@@ -113,7 +113,17 @@ export default function DataRecordingScreen() {
 
   // Helper functions
   const generateAssistantResponse = (result: any): string => {
+    // Check if this is a question/informational response
+    if (result.reasoning && result.workflow_plan?.status === 'completed' && result.workflow_plan?.steps?.includes('provide_information')) {
+      return result.reasoning;
+    }
+    
     if (!result.extracted_data || Object.keys(result.extracted_data).length === 0) {
+      // Check if we have reasoning to display for questions or no-data scenarios
+      if (result.reasoning && result.reasoning.includes('couldn\'t extract')) {
+        return result.reasoning;
+      }
+      
       return `I heard: "${result.transcription}"\n\nI'm analyzing this information. Could you provide more details about what you found?`;
     }
 

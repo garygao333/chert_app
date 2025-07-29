@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,54 +10,75 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList, RecentActivity } from '../types';
+import type { RootStackParamList, RecentActivity, Project } from '../types/index';
+import { SupabaseService } from '../services/supabaseService';
+import { testSupabaseConnection } from '../services/testSupabase';
 
 type DashboardNavigationProp = StackNavigationProp<RootStackParamList>;
-
-// Mock data - replace with real data from Supabase
-const mockRecentActivity: RecentActivity[] = [
-  {
-    id: '1',
-    type: 'commit',
-    description: 'user37 committed new data',
-    projectId: 'proj1',
-    projectName: 'Tharros Project',
-    timestamp: new Date('2025-07-25T10:30:00'),
-  },
-  {
-    id: '2',
-    type: 'create',
-    description: 'user37 started new data column',
-    projectId: 'proj1',
-    projectName: 'Tharros Project',
-    timestamp: new Date('2025-07-25T09:15:00'),
-  },
-  {
-    id: '3',
-    type: 'commit',
-    description: 'new_user committed data',
-    projectId: 'proj2',
-    projectName: 'Field Survey 2025',
-    timestamp: new Date('2025-07-25T08:45:00'),
-  },
-];
-
-const mockProjects = [
-  { id: 'proj1', name: 'Tharros Project', status: 'active' },
-  { id: 'proj2', name: 'Field Survey 2025', status: 'active' },
-  { id: 'proj3', name: 'Archaeological Site A', status: 'completed' },
-];
-
-const mockOrganizations = [
-  { id: 'org1', name: 'University Research Lab' },
-  { id: 'org2', name: 'Archaeological Society' },
-];
 
 export default function DashboardScreen() {
   const navigation = useNavigation<DashboardNavigationProp>();
   const [searchText, setSearchText] = useState('');
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [dashboardStats, setDashboardStats] = useState({
+    totalProjects: 0,
+    activeProjects: 0,
+    totalRecords: 0,
+    recentActivityCount: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Test connection first (for debugging)
+      console.log('🔍 Testing Supabase connection...');
+      await testSupabaseConnection();
+      
+      // Load data in parallel
+      const [activityData, projectsData, statsData] = await Promise.all([
+        SupabaseService.getRecentActivity(10),
+        SupabaseService.getProjects(),
+        SupabaseService.getDashboardStats()
+      ]);
+
+      setRecentActivity(activityData);
+      setProjects(projectsData);
+      setDashboardStats(statsData);
+      
+      console.log('📊 Dashboard data loaded:', {
+        projects: projectsData.length,
+        activities: activityData.length,
+        stats: statsData
+      });
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+    setRefreshing(false);
+  };
+
+  // Load data when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      loadDashboardData();
+    }, [])
+  );
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
   const getActivityIcon = (type: RecentActivity['type']) => {
     switch (type) {
@@ -111,67 +132,121 @@ export default function DashboardScreen() {
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* My Work Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Work</Text>
-          
-          <TouchableOpacity 
-            style={styles.workItem}
-            onPress={() => navigation.navigate('Projects')}
-          >
-            <Ionicons name="folder-outline" size={24} color="#007AFF" />
-            <Text style={styles.workItemText}>Projects</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.workItem}>
-            <Ionicons name="business-outline" size={24} color="#007AFF" />
-            <Text style={styles.workItemText}>Organizations</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Recent Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent</Text>
-          {mockRecentActivity.slice(0, 3).map((activity) => {
-            const icon = getActivityIcon(activity.type);
-            return (
-              <TouchableOpacity 
-                key={activity.id} 
-                style={styles.activityItem}
-                onPress={() => navigation.navigate('ProjectDetail', { projectId: activity.projectId })}
-              >
-                <Ionicons name={icon.name as any} size={20} color={icon.color} />
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityText}>{activity.description}</Text>
-                  <Text style={styles.activityProject}>{activity.projectName}</Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading dashboard...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Dashboard Stats */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Overview</Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statCard}>
+                  <Text style={styles.statNumber}>{dashboardStats.totalProjects}</Text>
+                  <Text style={styles.statLabel}>Total Projects</Text>
                 </View>
-                <Text style={styles.activityTime}>{formatTime(activity.timestamp)}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statNumber}>{dashboardStats.activeProjects}</Text>
+                  <Text style={styles.statLabel}>Active Projects</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statNumber}>{dashboardStats.totalRecords.toLocaleString()}</Text>
+                  <Text style={styles.statLabel}>Total Records</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statNumber}>{dashboardStats.recentActivityCount}</Text>
+                  <Text style={styles.statLabel}>Recent Activity</Text>
+                </View>
+              </View>
+            </View>
 
-        {/* Activity Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Activity</Text>
-          {mockRecentActivity.map((activity) => (
-            <TouchableOpacity 
-              key={activity.id} 
-              style={styles.activityItem}
-              onPress={() => navigation.navigate('ProjectDetail', { projectId: activity.projectId })}
-            >
-              <View style={styles.activityIconContainer}>
-                <Ionicons name="document-text-outline" size={20} color="#666" />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>{activity.projectName} reached 1000 data</Text>
-                <Text style={styles.activityTime}>{formatTime(activity.timestamp)}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+            {/* My Work Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>My Work</Text>
+              
+              <TouchableOpacity 
+                style={styles.workItem}
+                onPress={() => navigation.navigate('Projects')}
+              >
+                <Ionicons name="folder-outline" size={24} color="#007AFF" />
+                <View style={styles.workItemContent}>
+                  <Text style={styles.workItemText}>Projects</Text>
+                  <Text style={styles.workItemSubtext}>{projects.length} projects</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#ccc" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.workItem}>
+                <Ionicons name="business-outline" size={24} color="#007AFF" />
+                <View style={styles.workItemContent}>
+                  <Text style={styles.workItemText}>Organizations</Text>
+                  <Text style={styles.workItemSubtext}>View organizations</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#ccc" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Recent Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Recent</Text>
+              {recentActivity.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="time-outline" size={48} color="#ccc" />
+                  <Text style={styles.emptyStateText}>No recent activity</Text>
+                  <Text style={styles.emptyStateSubtext}>Start recording data to see activity here</Text>
+                </View>
+              ) : (
+                recentActivity.slice(0, 3).map((activity) => {
+                  const icon = getActivityIcon(activity.type);
+                  return (
+                    <TouchableOpacity 
+                      key={activity.id} 
+                      style={styles.activityItem}
+                      onPress={() => navigation.navigate('ProjectDetail', { projectId: activity.projectId })}
+                    >
+                      <Ionicons name={icon.name as any} size={20} color={icon.color} />
+                      <View style={styles.activityContent}>
+                        <Text style={styles.activityText}>{activity.description}</Text>
+                        <Text style={styles.activityProject}>{activity.projectName}</Text>
+                      </View>
+                      <Text style={styles.activityTime}>{formatTime(activity.timestamp)}</Text>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+
+            {/* Activity Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>All Activity</Text>
+              {recentActivity.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="document-text-outline" size={48} color="#ccc" />
+                  <Text style={styles.emptyStateText}>No activity yet</Text>
+                  <Text style={styles.emptyStateSubtext}>Create a project and start recording data</Text>
+                </View>
+              ) : (
+                recentActivity.map((activity) => (
+                  <TouchableOpacity 
+                    key={activity.id} 
+                    style={styles.activityItem}
+                    onPress={() => navigation.navigate('ProjectDetail', { projectId: activity.projectId })}
+                  >
+                    <View style={styles.activityIconContainer}>
+                      <Ionicons name="document-text-outline" size={20} color="#666" />
+                    </View>
+                    <View style={styles.activityContent}>
+                      <Text style={styles.activityText}>{activity.description}</Text>
+                      <Text style={styles.activityProject}>{activity.projectName}</Text>
+                      <Text style={styles.activityTime}>{formatTime(activity.timestamp)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Floating Action Button */}
@@ -254,11 +329,88 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  workItemText: {
+  workItemContent: {
     flex: 1,
+    marginLeft: 15,
+  },
+  workItemText: {
     fontSize: 16,
     color: '#333',
-    marginLeft: 15,
+    fontWeight: '600',
+  },
+  workItemSubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  statCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 15,
+    width: '48%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  emptyState: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 30,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 10,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 5,
+    textAlign: 'center',
   },
   activityItem: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,49 +10,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp, RouteProp } from '@react-navigation/stack';
-import type { RootStackParamList, RecentActivity } from '../types';
+import type { RootStackParamList, RecentActivity, Project } from '../types/index.js';
+import { SupabaseService } from '../services/supabaseService';
 
 type ProjectDetailNavigationProp = StackNavigationProp<RootStackParamList>;
 type ProjectDetailRouteProp = RouteProp<RootStackParamList, 'ProjectDetail'>;
-
-// Mock project data
-const mockProject = {
-  id: 'proj1',
-  name: 'Tharros Project',
-  description: 'Tharros project is a demonstration project that is used to convey the functionalities of the Merg program and how it can help facilitate field specialists to record data at a faster and more efficient rate.',
-  createdAt: new Date('2025-07-20'),
-  totalRecords: 1247,
-  lastActivity: new Date('2025-07-25T10:30:00'),
-};
-
-const mockRecentActivity: RecentActivity[] = [
-  {
-    id: '1',
-    type: 'commit',
-    description: 'user37 committed new data',
-    projectId: 'proj1',
-    projectName: 'Tharros Project',
-    timestamp: new Date('2025-07-25T10:30:00'),
-  },
-  {
-    id: '2',
-    type: 'create',
-    description: 'user37 started new data column',
-    projectId: 'proj1',
-    projectName: 'Tharros Project',
-    timestamp: new Date('2025-07-25T09:15:00'),
-  },
-  {
-    id: '3',
-    type: 'commit',
-    description: 'new_user committed data',
-    projectId: 'proj1',
-    projectName: 'Tharros Project',
-    timestamp: new Date('2025-07-25T08:45:00'),
-  },
-];
 
 const projectActions = [
   {
@@ -79,8 +43,47 @@ export default function ProjectDetailScreen() {
   const navigation = useNavigation<ProjectDetailNavigationProp>();
   const route = useRoute<ProjectDetailRouteProp>();
   const [searchText, setSearchText] = useState('');
+  const [project, setProject] = useState<Project | null>(null);
+  const [projectStats, setProjectStats] = useState({
+    totalRecords: 0,
+    lastActivity: null as Date | null
+  });
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const { projectId } = route.params;
+
+  const loadProjectData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load project data in parallel
+      const [projectData, statsData, activityData] = await Promise.all([
+        SupabaseService.getProject(projectId),
+        SupabaseService.getProjectStats(projectId),
+        SupabaseService.getRecentActivity(5, projectId)
+      ]);
+
+      setProject(projectData);
+      setProjectStats(statsData);
+      setRecentActivity(activityData);
+    } catch (error) {
+      console.error('Error loading project data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProjectData();
+    }, [projectId])
+  );
+
+  useEffect(() => {
+    loadProjectData();
+  }, [projectId]);
 
   const getActivityIcon = (type: RecentActivity['type']) => {
     switch (type) {
@@ -121,7 +124,7 @@ export default function ProjectDetailScreen() {
         colors={['#FFE5E5', '#FFF0F0']}
         style={styles.header}
       >
-        <Text style={styles.title}>{mockProject.name}</Text>
+        <Text style={styles.title}>{project?.name || 'Loading...'}</Text>
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
@@ -138,54 +141,78 @@ export default function ProjectDetailScreen() {
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Project Info */}
-        <View style={styles.section}>
-          <Text style={styles.description}>{mockProject.description}</Text>
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{mockProject.totalRecords.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Records</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{formatTime(mockProject.lastActivity)}</Text>
-              <Text style={styles.statLabel}>Last Activity</Text>
-            </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading project details...</Text>
           </View>
-        </View>
-
-        {/* Recent Activity */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent</Text>
-          {mockRecentActivity.map((activity) => {
-            const icon = getActivityIcon(activity.type);
-            return (
-              <View key={activity.id} style={styles.activityItem}>
-                <Ionicons name={icon.name as any} size={20} color={icon.color} />
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityText}>{activity.description}</Text>
-                  <Text style={styles.activityTime}>{formatTime(activity.timestamp)}</Text>
+        ) : project ? (
+          <>
+            {/* Project Info */}
+            <View style={styles.section}>
+              <Text style={styles.description}>{project.description}</Text>
+              <View style={styles.statsContainer}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{projectStats.totalRecords.toLocaleString()}</Text>
+                  <Text style={styles.statLabel}>Records</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>
+                    {projectStats.lastActivity ? formatTime(projectStats.lastActivity) : 'No activity'}
+                  </Text>
+                  <Text style={styles.statLabel}>Last Activity</Text>
                 </View>
               </View>
-            );
-          })}
-        </View>
+            </View>
 
-        {/* Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions</Text>
-          {projectActions.map((action) => (
-            <TouchableOpacity key={action.id} style={styles.actionItem}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name={action.icon as any} size={24} color="#007AFF" />
-              </View>
-              <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                <Text style={styles.actionDescription}>{action.description}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
-            </TouchableOpacity>
-          ))}
-        </View>
+            {/* Recent Activity */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Recent</Text>
+              {recentActivity.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="time-outline" size={48} color="#ccc" />
+                  <Text style={styles.emptyStateText}>No recent activity</Text>
+                  <Text style={styles.emptyStateSubtext}>Start recording data to see activity here</Text>
+                </View>
+              ) : (
+                recentActivity.map((activity) => {
+                  const icon = getActivityIcon(activity.type);
+                  return (
+                    <View key={activity.id} style={styles.activityItem}>
+                      <Ionicons name={icon.name as any} size={20} color={icon.color} />
+                      <View style={styles.activityContent}>
+                        <Text style={styles.activityText}>{activity.description}</Text>
+                        <Text style={styles.activityTime}>{formatTime(activity.timestamp)}</Text>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+
+            {/* Actions */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Actions</Text>
+              {projectActions.map((action) => (
+                <TouchableOpacity key={action.id} style={styles.actionItem}>
+                  <View style={styles.actionIconContainer}>
+                    <Ionicons name={action.icon as any} size={24} color="#007AFF" />
+                  </View>
+                  <View style={styles.actionContent}>
+                    <Text style={styles.actionTitle}>{action.title}</Text>
+                    <Text style={styles.actionDescription}>{action.description}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="alert-circle-outline" size={48} color="#ccc" />
+            <Text style={styles.emptyStateText}>Project not found</Text>
+            <Text style={styles.emptyStateSubtext}>The requested project could not be loaded</Text>
+          </View>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -316,6 +343,44 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: 12,
     color: '#999',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
+  },
+  emptyState: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 30,
+    alignItems: 'center',
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 10,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 5,
+    textAlign: 'center',
   },
   actionItem: {
     flexDirection: 'row',

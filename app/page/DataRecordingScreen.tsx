@@ -115,7 +115,8 @@ export default function DataRecordingScreen() {
   const generateAssistantResponse = (result: any): string => {
     // Check if this is a question/informational response
     if (result.reasoning && result.workflow_plan?.status === 'completed' && result.workflow_plan?.steps?.includes('provide_information')) {
-      return result.reasoning;
+      // Clean up the formatting for React Native
+      return result.reasoning.replace(/\*\*/g, '').replace(/\n\n/g, '\n');
     }
     
     if (!result.extracted_data || Object.keys(result.extracted_data).length === 0) {

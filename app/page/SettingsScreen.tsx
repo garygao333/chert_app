@@ -85,7 +85,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#007AFF', '#0056CC']}
+        colors={['rgba(239, 145, 68, 0.9)', 'rgba(254, 126, 66, 0.7)']}
         style={styles.header}
       >
         <Text style={styles.title}>Settings</Text>
@@ -127,7 +127,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255, 248, 243, 0.95)', // Peach-white gradient base
   },
   header: {
     paddingTop: 20,

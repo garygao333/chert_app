@@ -679,7 +679,7 @@ export default function DataRecordingScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <LinearGradient
-        colors={['#4CAF50', '#388E3C']}
+        colors={['rgba(239, 145, 68, 0.9)', 'rgba(254, 126, 66, 0.7)']}
         style={styles.header}
       >
         <Text style={styles.title}>Record Data</Text>
@@ -815,7 +815,7 @@ export default function DataRecordingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255, 248, 243, 0.95)', // Peach-white gradient base
   },
   header: {
     paddingTop: 20,

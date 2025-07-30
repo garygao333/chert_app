@@ -37,8 +37,8 @@ function MainTabs() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: '#EF9144',
+        tabBarInactiveTintColor: 'rgba(37, 51, 94, 0.6)',
         headerShown: false,
       })}
     >
@@ -56,7 +56,7 @@ export default function AppNavigator() {
       <Stack.Navigator
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#007AFF',
+            backgroundColor: '#EF9144',
           },
           headerTintColor: '#fff',
           headerTitleStyle: {

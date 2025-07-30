@@ -76,7 +76,7 @@ export default function ProjectsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#007AFF', '#0056CC']}
+        colors={['rgba(239, 145, 68, 0.9)', 'rgba(254, 126, 66, 0.7)']}
         style={styles.header}
       >
         <Text style={styles.title}>Projects</Text>
@@ -177,7 +177,7 @@ export default function ProjectsScreen() {
         onPress={() => navigation.navigate('CreateProject')}
       >
         <LinearGradient
-          colors={['#007AFF', '#0056CC']}
+          colors={['#EF9144', '#FE7E42']}
           style={styles.fabGradient}
         >
           <Ionicons name="add" size={28} color="white" />
@@ -190,7 +190,7 @@ export default function ProjectsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255, 248, 243, 0.95)', // Peach-white gradient base
   },
   header: {
     paddingTop: 20,

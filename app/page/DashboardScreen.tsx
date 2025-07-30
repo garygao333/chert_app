@@ -11,12 +11,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList, RecentActivity, Project } from '../types/index';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { CompositeNavigationProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import type { MainTabParamList, RootStackParamList, RecentActivity, Project } from '../types/index';
 import { SupabaseService } from '../services/supabaseService';
 import { testSupabaseConnection } from '../services/testSupabase';
 
-type DashboardNavigationProp = StackNavigationProp<RootStackParamList>;
+type DashboardNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Dashboard'>,
+  StackNavigationProp<RootStackParamList>
+>;
 
 export default function DashboardScreen() {
   const navigation = useNavigation<DashboardNavigationProp>();
@@ -112,7 +117,7 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#007AFF', '#0056CC']}
+        colors={['rgba(239, 145, 68, 0.9)', 'rgba(254, 126, 66, 0.7)']}
         style={styles.header}
       >
         <Text style={styles.title}>Dashboard</Text>
@@ -138,29 +143,6 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <>
-            {/* Dashboard Stats */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Overview</Text>
-              <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{dashboardStats.totalProjects}</Text>
-                  <Text style={styles.statLabel}>Total Projects</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{dashboardStats.activeProjects}</Text>
-                  <Text style={styles.statLabel}>Active Projects</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{dashboardStats.totalRecords.toLocaleString()}</Text>
-                  <Text style={styles.statLabel}>Total Records</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{dashboardStats.recentActivityCount}</Text>
-                  <Text style={styles.statLabel}>Recent Activity</Text>
-                </View>
-              </View>
-            </View>
-
             {/* My Work Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>My Work</Text>
@@ -169,81 +151,13 @@ export default function DashboardScreen() {
                 style={styles.workItem}
                 onPress={() => navigation.navigate('Projects')}
               >
-                <Ionicons name="folder-outline" size={24} color="#007AFF" />
+                <Ionicons name="folder-outline" size={28} color="#EF9144" />
                 <View style={styles.workItemContent}>
                   <Text style={styles.workItemText}>Projects</Text>
                   <Text style={styles.workItemSubtext}>{projects.length} projects</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                <Ionicons name="chevron-forward" size={20} color="rgba(37, 51, 94, 0.4)" />
               </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.workItem}>
-                <Ionicons name="business-outline" size={24} color="#007AFF" />
-                <View style={styles.workItemContent}>
-                  <Text style={styles.workItemText}>Organizations</Text>
-                  <Text style={styles.workItemSubtext}>View organizations</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Recent Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent</Text>
-              {recentActivity.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="time-outline" size={48} color="#ccc" />
-                  <Text style={styles.emptyStateText}>No recent activity</Text>
-                  <Text style={styles.emptyStateSubtext}>Start recording data to see activity here</Text>
-                </View>
-              ) : (
-                recentActivity.slice(0, 3).map((activity) => {
-                  const icon = getActivityIcon(activity.type);
-                  return (
-                    <TouchableOpacity 
-                      key={activity.id} 
-                      style={styles.activityItem}
-                      onPress={() => navigation.navigate('ProjectDetail', { projectId: activity.projectId })}
-                    >
-                      <Ionicons name={icon.name as any} size={20} color={icon.color} />
-                      <View style={styles.activityContent}>
-                        <Text style={styles.activityText}>{activity.description}</Text>
-                        <Text style={styles.activityProject}>{activity.projectName}</Text>
-                      </View>
-                      <Text style={styles.activityTime}>{formatTime(activity.timestamp)}</Text>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </View>
-
-            {/* Activity Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>All Activity</Text>
-              {recentActivity.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="document-text-outline" size={48} color="#ccc" />
-                  <Text style={styles.emptyStateText}>No activity yet</Text>
-                  <Text style={styles.emptyStateSubtext}>Create a project and start recording data</Text>
-                </View>
-              ) : (
-                recentActivity.map((activity) => (
-                  <TouchableOpacity 
-                    key={activity.id} 
-                    style={styles.activityItem}
-                    onPress={() => navigation.navigate('ProjectDetail', { projectId: activity.projectId })}
-                  >
-                    <View style={styles.activityIconContainer}>
-                      <Ionicons name="document-text-outline" size={20} color="#666" />
-                    </View>
-                    <View style={styles.activityContent}>
-                      <Text style={styles.activityText}>{activity.description}</Text>
-                      <Text style={styles.activityProject}>{activity.projectName}</Text>
-                      <Text style={styles.activityTime}>{formatTime(activity.timestamp)}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
             </View>
           </>
         )}
@@ -255,7 +169,7 @@ export default function DashboardScreen() {
         onPress={() => navigation.navigate('CreateProject')}
       >
         <LinearGradient
-          colors={['#007AFF', '#0056CC']}
+          colors={['#EF9144', '#FE7E42']}
           style={styles.fabGradient}
         >
           <Ionicons name="add" size={28} color="white" />
@@ -268,34 +182,48 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255, 248, 243, 0.95)', // Peach-white gradient base
   },
   header: {
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingTop: 25,
+    paddingBottom: 25,
     paddingHorizontal: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 15,
+    color: '#25335E',
+    marginBottom: 18,
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 15,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 145, 68, 0.3)',
+    shadowColor: '#EF9144',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   searchIcon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: '#25335E',
+    fontWeight: '500',
   },
   voiceButton: {
     padding: 5,
@@ -308,39 +236,41 @@ const styles = StyleSheet.create({
     marginTop: 25,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#25335E',
+    marginBottom: 18,
   },
   workItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-    shadowColor: '#000',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    padding: 18,
+    borderRadius: 16,
+    marginBottom: 12,
+    shadowColor: '#EF9144',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
     elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 145, 68, 0.2)',
   },
   workItemContent: {
     flex: 1,
     marginLeft: 15,
   },
   workItemText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 18,
+    color: '#25335E',
     fontWeight: '600',
   },
   workItemSubtext: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 14,
+    color: 'rgba(37, 51, 94, 0.6)',
     marginTop: 2,
   },
   loadingContainer: {

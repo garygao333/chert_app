@@ -11,7 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import type { StackNavigationProp, RouteProp } from '@react-navigation/stack';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList, RecentActivity, Project } from '../types/index.js';
 import { SupabaseService } from '../services/supabaseService';
 
@@ -121,7 +122,7 @@ export default function ProjectDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#FFE5E5', '#FFF0F0']}
+        colors={['rgba(239, 145, 68, 0.8)', 'rgba(254, 126, 66, 0.6)']}
         style={styles.header}
       >
         <Text style={styles.title}>{project?.name || 'Loading...'}</Text>
@@ -223,7 +224,7 @@ export default function ProjectDetailScreen() {
         onPress={handleStartRecording}
       >
         <LinearGradient
-          colors={['#4CAF50', '#388E3C']}
+          colors={['#EF9144', '#FE7E42']}
           style={styles.fabGradient}
         >
           <Ionicons name="mic" size={28} color="white" />
@@ -236,7 +237,7 @@ export default function ProjectDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255, 248, 243, 0.95)', // Peach-white gradient base
   },
   header: {
     paddingTop: 20,

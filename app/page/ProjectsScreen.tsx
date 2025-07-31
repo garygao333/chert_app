@@ -20,7 +20,6 @@ type ProjectsNavigationProp = StackNavigationProp<RootStackParamList>;
 export default function ProjectsScreen() {
   const navigation = useNavigation<ProjectsNavigationProp>();
   const [searchText, setSearchText] = useState('');
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -92,26 +91,6 @@ export default function ProjectsScreen() {
         </View>
       </LinearGradient>
 
-      <View style={styles.filterContainer}>
-        {(['all', 'active', 'completed'] as const).map((filterOption) => (
-          <TouchableOpacity
-            key={filterOption}
-            style={[
-              styles.filterButton,
-              filter === filterOption && styles.activeFilterButton
-            ]}
-            onPress={() => setFilter(filterOption)}
-          >
-            <Text style={[
-              styles.filterText,
-              filter === filterOption && styles.activeFilterText
-            ]}>
-              {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -142,8 +121,8 @@ export default function ProjectsScreen() {
                 <View style={styles.databaseBadge}>
                   <Ionicons 
                     name={getDatabaseIcon(project.databaseType) as any} 
-                    size={16} 
-                    color="#007AFF" 
+                    size={14} 
+                    color="#EF9144" 
                   />
                   <Text style={styles.databaseText}>{project.databaseType}</Text>
                 </View>
@@ -158,10 +137,10 @@ export default function ProjectsScreen() {
                     style={styles.actionButton}
                     onPress={() => navigation.navigate('DataRecording', { projectId: project.id })}
                   >
-                    <Ionicons name="mic" size={16} color="#4CAF50" />
+                    <Ionicons name="mic" size={14} color="#4CAF50" />
                     <Text style={styles.actionText}>Record</Text>
                   </TouchableOpacity>
-                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                  <Ionicons name="chevron-forward" size={18} color="#ccc" />
                 </View>
               </View>
             </TouchableOpacity>
@@ -219,111 +198,102 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    gap: 10,
-  },
-  filterButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  activeFilterButton: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  filterText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  activeFilterText: {
-    color: 'white',
-  },
   content: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 20,
   },
   projectCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    marginHorizontal: 2,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   projectHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 16,
   },
   projectInfo: {
     flex: 1,
-    marginRight: 10,
+    marginRight: 12,
   },
   projectName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 5,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   projectDescription: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666',
-    lineHeight: 20,
+    lineHeight: 22,
+    marginBottom: 4,
   },
   databaseBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+    backgroundColor: 'rgba(239, 145, 68, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 145, 68, 0.2)',
   },
   databaseText: {
-    fontSize: 12,
-    color: '#007AFF',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#EF9144',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   projectFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.06)',
   },
   projectDate: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#999',
+    fontWeight: '500',
   },
   projectActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 15,
-    gap: 4,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 175, 80, 0.2)',
   },
   actionText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#4CAF50',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
@@ -338,18 +308,20 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 30,
+    borderRadius: 16,
+    padding: 40,
     alignItems: 'center',
     marginVertical: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   emptyStateText: {
     fontSize: 16,

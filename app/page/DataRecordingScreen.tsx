@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList } from '../types';
+import type { RootStackParamList, RecordMetadata } from '../types';
 import { ApiService } from '../services/api';
 
 type DataRecordingNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -506,16 +506,8 @@ export default function DataRecordingScreen() {
                 recordData[field.name] = field.value;
               });
 
-              // Add metadata
-              const metadata: any = {
-                recordingMethod: 'voice' as const, // Will be determined by majority source
-                confidence: currentRecord.reduce((sum, field) => sum + field.confidence, 0) / currentRecord.length,
-                field_sources: currentRecord.reduce((sources, field) => {
-                  sources[field.name] = field.source;
-                  return sources;
-                }, {} as Record<string, string>),
-                timestamp: new Date().toISOString(),
-              };
+              // Calculate average confidence
+              const averageConfidence = currentRecord.reduce((sum, field) => sum + field.confidence, 0) / currentRecord.length;
 
               // Determine primary recording method
               const sourceCounts = currentRecord.reduce((counts, field) => {
@@ -525,8 +517,16 @@ export default function DataRecordingScreen() {
               
               const primarySource = Object.entries(sourceCounts)
                 .sort(([,a], [,b]) => b - a)[0][0] as 'voice' | 'image' | 'manual';
-              
-              metadata.recordingMethod = primarySource;
+
+              // Create metadata object matching frontend RecordMetadata interface
+              const metadata: RecordMetadata = {
+                recordingMethod: primarySource,
+                location: undefined, // TODO: Add GPS coordinates if available
+                audioFile: undefined, // TODO: Add audio file reference if available
+                imageFiles: undefined, // TODO: Add image file references if available
+                reasoning: `Data collected via ${primarySource} input with ${currentRecord.length} fields`,
+                userFeedback: undefined,
+              };
 
               // Create data record via API
               await ApiService.createDataRecord({
@@ -534,7 +534,7 @@ export default function DataRecordingScreen() {
                 tableName: tableName || 'samples',
                 data: recordData,
                 metadata: metadata,
-                confidence: metadata.confidence,
+                confidence: averageConfidence,
               });
 
               Alert.alert('Success', 'Record committed successfully!');

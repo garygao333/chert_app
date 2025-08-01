@@ -96,8 +96,13 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               await signOut();
+              // Navigation will be handled automatically by AppNavigator when user becomes null
             } catch (error) {
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
+              console.error('Sign out error:', error);
+              Alert.alert(
+                'Sign Out Failed', 
+                'Unable to sign out. Please check your connection and try again.'
+              );
             }
           },
         },

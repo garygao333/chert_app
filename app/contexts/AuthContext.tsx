@@ -28,6 +28,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     const unsubscribe = FirebaseAuthService.onAuthStateChanged((user) => {
+      console.log('Auth state changed:', user ? 'User signed in' : 'User signed out');
       setUser(user);
       setLoading(false);
     });
@@ -36,10 +37,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const signOut = async () => {
-    setLoading(true);
-    await FirebaseAuthService.signOut();
-    setUser(null);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const result = await FirebaseAuthService.signOut();
+      if (result.error) {
+        console.error('Sign out error:', result.error);
+        throw result.error;
+      }
+      // Don't manually set user to null - let onAuthStateChanged handle it
+    } catch (error) {
+      console.error('Sign out failed:', error);
+      setLoading(false);
+      throw error;
+    }
   };
 
   const value: AuthContextType = {

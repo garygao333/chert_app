@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 // Import screens
 import DashboardScreen from '../page/DashboardScreen';
@@ -12,6 +13,11 @@ import SettingsScreen from '../page/SettingsScreen';
 import CreateProjectScreen from '../page/CreateProjectScreen';
 import ProjectDetailScreen from '../page/ProjectDetailScreen';
 import DataRecordingScreen from '../page/DataRecordingScreen';
+import Login from '../page/Login';
+import Signup from '../page/Signup';
+
+// Import auth context
+import { useAuth } from '../contexts/AuthContext';
 
 import type { RootStackParamList, MainTabParamList } from '../types';
 
@@ -21,6 +27,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 function MainTabs() {
   return (
     <Tab.Navigator
+      initialRouteName="Projects"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
@@ -49,48 +56,88 @@ function MainTabs() {
   );
 }
 
+function AuthNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen name="Signup" component={Signup} />
+    </Stack.Navigator>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#EF9144" />
+    </View>
+  );
+}
+
 export default function AppNavigator() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <NavigationContainer>
       <StatusBar style="auto" />
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: '#EF9144',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
-      >
-        <Stack.Screen 
-          name="MainTabs" 
-          component={MainTabs}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="CreateProject" 
-          component={CreateProjectScreen}
-          options={{ 
-            title: 'Create Project',
-            presentation: 'modal' 
+      {user ? (
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: '#EF9144',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
           }}
-        />
-        <Stack.Screen 
-          name="ProjectDetail" 
-          component={ProjectDetailScreen}
-          options={{ title: 'Project Details' }}
-        />
-        <Stack.Screen 
-          name="DataRecording" 
-          component={DataRecordingScreen}
-          options={{ 
-            title: 'Record Data',
-            presentation: 'modal'
-          }}
-        />
-      </Stack.Navigator>
+        >
+          <Stack.Screen 
+            name="MainTabs" 
+            component={MainTabs}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="CreateProject" 
+            component={CreateProjectScreen}
+            options={{ 
+              title: 'Create Project',
+              presentation: 'modal' 
+            }}
+          />
+          <Stack.Screen 
+            name="ProjectDetail" 
+            component={ProjectDetailScreen}
+            options={{ title: 'Project Details' }}
+          />
+          <Stack.Screen 
+            name="DataRecording" 
+            component={DataRecordingScreen}
+            options={{ 
+              title: 'Record Data',
+              presentation: 'modal'
+            }}
+          />
+        </Stack.Navigator>
+      ) : (
+        <AuthNavigator />
+      )}
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFF8F3',
+  },
+});

@@ -19,7 +19,7 @@ import { SupabaseService } from '../services/supabaseService';
 import { testSupabaseConnection } from '../services/testSupabase';
 
 type DashboardNavigationProp = CompositeNavigationProp<
-  BottomTabNavigationProp<MainTabParamList, 'Dashboard'>,
+  BottomTabNavigationProp<MainTabParamList, 'Projects'>,
   StackNavigationProp<RootStackParamList>
 >;
 

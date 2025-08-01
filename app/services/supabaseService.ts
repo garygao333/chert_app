@@ -260,4 +260,102 @@ export class SupabaseService {
       console.error('Error in logActivity:', error);
     }
   }
+
+  // Authentication methods
+  static async signUp(email: string, password: string, fullName?: string): Promise<{ user: any; error: any }> {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Sign up error:', error);
+        return { user: null, error };
+      }
+
+      return { user: data.user, error: null };
+    } catch (error) {
+      console.error('Error in signUp:', error);
+      return { user: null, error };
+    }
+  }
+
+  static async signIn(email: string, password: string): Promise<{ user: any; error: any }> {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Sign in error:', error);
+        return { user: null, error };
+      }
+
+      return { user: data.user, error: null };
+    } catch (error) {
+      console.error('Error in signIn:', error);
+      return { user: null, error };
+    }
+  }
+
+  static async signOut(): Promise<{ error: any }> {
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Sign out error:', error);
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      console.error('Error in signOut:', error);
+      return { error };
+    }
+  }
+
+  static async getCurrentUser(): Promise<any> {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error) {
+        console.error('Get current user error:', error);
+        return null;
+      }
+
+      return user;
+    } catch (error) {
+      console.error('Error in getCurrentUser:', error);
+      return null;
+    }
+  }
+
+  static async resetPassword(email: string): Promise<{ error: any }> {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'com.chert.app://reset-password',
+      });
+
+      if (error) {
+        console.error('Reset password error:', error);
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      console.error('Error in resetPassword:', error);
+      return { error };
+    }
+  }
+
+  static onAuthStateChange(callback: (event: string, session: any) => void) {
+    return supabase.auth.onAuthStateChange(callback);
+  }
 }

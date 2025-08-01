@@ -69,8 +69,27 @@ export interface RecentActivity {
   timestamp: Date;
 }
 
+// Authentication types
+export interface User {
+  id: string;
+  email: string;
+  fullName?: string;
+  avatarUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AuthSession {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
+}
+
 // Navigation types
 export type RootStackParamList = {
+  Auth: undefined;
+  Login: undefined;
+  Signup: undefined;
   MainTabs: undefined;
   CreateProject: undefined;
   ProjectDetail: { projectId: string };

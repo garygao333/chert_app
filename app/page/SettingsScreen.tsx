@@ -10,8 +10,17 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../contexts/AuthContext';
 
-const settingsOptions = [
+interface SettingOption {
+  id: string;
+  title: string;
+  icon: string;
+  description: string;
+  isDestructive?: boolean;
+}
+
+const settingsOptions: SettingOption[] = [
   {
     id: 'account',
     title: 'Account',
@@ -54,11 +63,47 @@ const settingsOptions = [
     icon: 'information-circle-outline',
     description: 'App version and information',
   },
+  {
+    id: 'signout',
+    title: 'Sign Out',
+    icon: 'log-out-outline',
+    description: 'Sign out of your account',
+    isDestructive: true,
+  },
 ];
 
 export default function SettingsScreen() {
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleSettingPress = (settingId: string) => {
     switch (settingId) {
+      case 'signout':
+        handleSignOut();
+        break;
       case 'about':
         Alert.alert(
           'About Chert',
@@ -100,10 +145,19 @@ export default function SettingsScreen() {
               onPress={() => handleSettingPress(option.id)}
             >
               <View style={styles.settingIconContainer}>
-                <Ionicons name={option.icon as any} size={24} color="#007AFF" />
+                <Ionicons 
+                  name={option.icon as any} 
+                  size={24} 
+                  color={option.isDestructive ? "#FF3B30" : "#007AFF"} 
+                />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingTitle}>{option.title}</Text>
+                <Text style={[
+                  styles.settingTitle,
+                  option.isDestructive && styles.destructiveText
+                ]}>
+                  {option.title}
+                </Text>
                 <Text style={styles.settingDescription}>{option.description}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#ccc" />
@@ -183,6 +237,9 @@ const styles = StyleSheet.create({
   settingDescription: {
     fontSize: 14,
     color: '#666',
+  },
+  destructiveText: {
+    color: '#FF3B30',
   },
   versionContainer: {
     alignItems: 'center',

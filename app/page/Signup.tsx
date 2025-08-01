@@ -104,7 +104,7 @@ export default function Signup() {
           [
             {
               text: 'Get Started',
-              onPress: () => navigation.navigate('MainTabs'),
+              onPress: () => navigation.navigate('Projects'),
             },
           ]
         );

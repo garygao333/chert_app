@@ -15,6 +15,7 @@ import ProjectDetailScreen from '../page/ProjectDetailScreen';
 import DataRecordingScreen from '../page/DataRecordingScreen';
 import Login from '../page/Login';
 import Signup from '../page/Signup';
+import AccountScreen from '../page/AccountScreen';
 
 // Import auth context
 import { useAuth } from '../contexts/AuthContext';
@@ -100,9 +101,12 @@ export default function AppNavigator() {
           }}
         >
           <Stack.Screen 
-            name="MainTabs" 
-            component={MainTabs}
-            options={{ headerShown: false }}
+            name="Projects" 
+            component={ProjectsScreen}
+            options={{ 
+              title: 'Projects',
+              headerShown: true 
+            }}
           />
           <Stack.Screen 
             name="CreateProject" 
@@ -124,6 +128,11 @@ export default function AppNavigator() {
               title: 'Record Data',
               presentation: 'modal'
             }}
+          />
+          <Stack.Screen 
+            name="Account" 
+            component={AccountScreen}
+            options={{ headerShown: false }}
           />
         </Stack.Navigator>
       ) : (

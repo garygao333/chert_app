@@ -74,7 +74,7 @@ export default function Login() {
 
       if (user) {
         console.log('Login successful:', user.uid);
-        navigation.navigate('MainTabs');
+        navigation.navigate('Projects');
       }
     } catch (error) {
       console.error('Login error:', error);

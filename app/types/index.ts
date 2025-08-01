@@ -90,10 +90,11 @@ export type RootStackParamList = {
   Auth: undefined;
   Login: undefined;
   Signup: undefined;
-  MainTabs: undefined;
+  Projects: undefined;
   CreateProject: undefined;
   ProjectDetail: { projectId: string };
   DataRecording: { projectId: string; tableName?: string };
+  Account: undefined;
 };
 
 export type MainTabParamList = {

@@ -10,7 +10,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
+import { RootStackParamList } from '../types';
+
+type SettingsNavigationProp = StackNavigationProp<RootStackParamList>;
 
 interface SettingOption {
   id: string;
@@ -73,6 +78,7 @@ const settingsOptions: SettingOption[] = [
 ];
 
 export default function SettingsScreen() {
+  const navigation = useNavigation<SettingsNavigationProp>();
   const { signOut } = useAuth();
 
   const handleSignOut = async () => {
@@ -101,6 +107,9 @@ export default function SettingsScreen() {
 
   const handleSettingPress = (settingId: string) => {
     switch (settingId) {
+      case 'account':
+        navigation.navigate('Account');
+        break;
       case 'signout':
         handleSignOut();
         break;

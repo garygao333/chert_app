@@ -178,7 +178,7 @@ export default function SettingsScreen() {
           <View style={styles.versionContainer}>
             <Text style={styles.versionText}>Chert v1.0.0</Text>
             <Text style={styles.versionSubtext}>
-              Powered by OpenAI • Built with React Native
+               Chert @ 2025, Built with Expo
             </Text>
           </View>
         </View>

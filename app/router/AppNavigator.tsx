@@ -101,12 +101,9 @@ export default function AppNavigator() {
           }}
         >
           <Stack.Screen 
-            name="Projects" 
-            component={ProjectsScreen}
-            options={{ 
-              title: 'Projects',
-              headerShown: true 
-            }}
+            name="MainTabs" 
+            component={MainTabs}
+            options={{ headerShown: false }}
           />
           <Stack.Screen 
             name="CreateProject" 

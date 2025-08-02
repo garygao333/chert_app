@@ -34,7 +34,7 @@ export interface Relationship {
   fromColumn: string;
   toTable: string;
   toColumn: string;
-  type: 'one-to-one' | 'one-to-many' | 'many-to-many';
+  type: 'one-to-one' | 'one-to-many' | 'many-to-many' | 'many-to-one';
 }
 
 export interface DataRecord {
@@ -95,6 +95,9 @@ export type RootStackParamList = {
   CreateProject: undefined;
   ProjectDetail: { projectId: string };
   DataRecording: { projectId: string; tableName?: string };
+  DataLogs: { projectId: string };
+  DatabaseSchema: { projectId: string };
+  DataSchemaConfig: { projectId: string };
   Account: undefined;
 };
 

@@ -13,6 +13,9 @@ import SettingsScreen from '../page/SettingsScreen';
 import CreateProjectScreen from '../page/CreateProjectScreen';
 import ProjectDetailScreen from '../page/ProjectDetailScreen';
 import DataRecordingScreen from '../page/DataRecordingScreen';
+import DataLogsScreen from '../page/DataLogsScreen';
+import DatabaseSchemaScreen from '../page/DatabaseSchemaScreen';
+import DataSchemaConfigScreen from '../page/DataSchemaConfigScreen';
 import Login from '../page/Login';
 import Signup from '../page/Signup';
 import AccountScreen from '../page/AccountScreen';
@@ -125,6 +128,21 @@ export default function AppNavigator() {
               title: 'Record Data',
               presentation: 'modal'
             }}
+          />
+          <Stack.Screen 
+            name="DataLogs" 
+            component={DataLogsScreen}
+            options={{ title: 'Data Logs' }}
+          />
+          <Stack.Screen 
+            name="DatabaseSchema" 
+            component={DatabaseSchemaScreen}
+            options={{ title: 'Database Schema' }}
+          />
+          <Stack.Screen 
+            name="DataSchemaConfig" 
+            component={DataSchemaConfigScreen}
+            options={{ title: 'Configure Schema' }}
           />
           <Stack.Screen 
             name="Account" 

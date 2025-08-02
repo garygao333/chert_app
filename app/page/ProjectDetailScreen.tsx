@@ -28,13 +28,13 @@ const projectActions = [
   },
   {
     id: 'database',
-    title: 'Database',
+    title: 'Database Schema',
     icon: 'server-outline',
     description: 'View database schema and structure',
   },
   {
     id: 'data-schema',
-    title: 'Data Schema',
+    title: 'Data Schema Config',
     icon: 'grid-outline',
     description: 'Configure data fields and validation',
   },
@@ -112,6 +112,20 @@ export default function ProjectDetailScreen() {
     } else {
       const diffDays = Math.floor(diffHours / 24);
       return `${diffDays}d ago`;
+    }
+  };
+
+  const handleActionPress = (actionId: string) => {
+    switch (actionId) {
+      case 'data-logs':
+        navigation.navigate('DataLogs', { projectId });
+        break;
+      case 'database':
+        navigation.navigate('DatabaseSchema', { projectId });
+        break;
+      case 'data-schema':
+        navigation.navigate('DataSchemaConfig', { projectId });
+        break;
     }
   };
 
@@ -194,7 +208,11 @@ export default function ProjectDetailScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Actions</Text>
               {projectActions.map((action) => (
-                <TouchableOpacity key={action.id} style={styles.actionItem}>
+                <TouchableOpacity 
+                  key={action.id} 
+                  style={styles.actionItem}
+                  onPress={() => handleActionPress(action.id)}
+                >
                   <View style={styles.actionIconContainer}>
                     <Ionicons name={action.icon as any} size={24} color="#007AFF" />
                   </View>

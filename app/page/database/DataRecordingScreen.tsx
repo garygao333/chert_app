@@ -18,8 +18,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList, RecordMetadata } from '../types';
-import { ApiService } from '../services/api';
+import type { RootStackParamList, RecordMetadata } from '../../types';
+import { ApiService } from '../../services/api';
 
 type DataRecordingNavigationProp = StackNavigationProp<RootStackParamList>;
 type DataRecordingRouteProp = RouteProp<RootStackParamList, 'DataRecording'>;

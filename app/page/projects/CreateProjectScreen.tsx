@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList } from '../types';
+import type { RootStackParamList } from '../../types';
 
 type CreateProjectNavigationProp = StackNavigationProp<RootStackParamList>;
 

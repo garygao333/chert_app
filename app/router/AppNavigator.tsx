@@ -8,17 +8,17 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 // Import screens
 import DashboardScreen from '../page/DashboardScreen';
-import ProjectsScreen from '../page/ProjectsScreen';
-import SettingsScreen from '../page/SettingsScreen';
-import CreateProjectScreen from '../page/CreateProjectScreen';
-import ProjectDetailScreen from '../page/ProjectDetailScreen';
-import DataRecordingScreen from '../page/DataRecordingScreen';
-import DataLogsScreen from '../page/DataLogsScreen';
-import DatabaseSchemaScreen from '../page/DatabaseSchemaScreen';
-import DataSchemaConfigScreen from '../page/DataSchemaConfigScreen';
-import Login from '../page/Login';
-import Signup from '../page/Signup';
-import AccountScreen from '../page/AccountScreen';
+import ProjectsScreen from '../page/projects/ProjectsScreen';
+import SettingsScreen from '../page/settings/SettingsScreen';
+import CreateProjectScreen from '../page/projects/CreateProjectScreen';
+import ProjectDetailScreen from '../page/projects/ProjectDetailScreen';
+import DataRecordingScreen from '../page/database/DataRecordingScreen';
+import DataLogsScreen from '../page/database/DataLogsScreen';
+import DatabaseSchemaScreen from '../page/database/DatabaseSchemaScreen';
+import DataSchemaConfigScreen from '../page/database/DataSchemaConfigScreen';
+import Login from '../page/auth/Login';
+import Signup from '../page/auth/Signup';
+import AccountScreen from '../page/settings/AccountScreen';
 
 // Import auth context
 import { useAuth } from '../contexts/AuthContext';

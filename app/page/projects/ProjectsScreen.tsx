@@ -12,8 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList, Project } from '../types/index.js';
-import { SupabaseService } from '../services/supabaseService';
+import type { RootStackParamList, Project } from '../../types/index.js';
+import { SupabaseService } from '../../services/supabaseService.js';
 
 type ProjectsNavigationProp = StackNavigationProp<RootStackParamList>;
 

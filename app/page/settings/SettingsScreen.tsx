@@ -12,8 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { useAuth } from '../contexts/AuthContext';
-import { RootStackParamList } from '../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { RootStackParamList } from '../../types';
 
 type SettingsNavigationProp = StackNavigationProp<RootStackParamList>;
 

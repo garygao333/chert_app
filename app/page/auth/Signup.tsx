@@ -16,21 +16,37 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../types';
-import FirebaseAuthService from '../services/firebaseAuth';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { RootStackParamList } from '../../types';
+import FirebaseAuthService from '../../services/firebaseAuth';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
-type LoginNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
+type SignupNavigationProp = StackNavigationProp<RootStackParamList, 'Signup'>;
 
-export default function Login() {
-  const navigation = useNavigation<LoginNavigationProp>();
+export default function Signup() {
+  const navigation = useNavigation<SignupNavigationProp>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+  const validatePassword = (password: string) => {
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters long';
+    }
+    return null;
+  };
+
+  const handleSignup = async () => {
+    // Validate inputs
+    if (!fullName.trim()) {
+      Alert.alert('Error', 'Please enter your full name');
+      return;
+    }
+
+    if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -40,83 +56,64 @@ export default function Login() {
       return;
     }
 
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      Alert.alert('Error', passwordError);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const { user, error } = await FirebaseAuthService.signIn(email.trim(), password);
+      const { user, error } = await FirebaseAuthService.signUp(email.trim(), password);
 
       if (error) {
-        let errorMessage = 'An error occurred during login';
+        let errorMessage = 'An error occurred during signup';
         
         switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage = 'An account with this email already exists';
+            break;
           case 'auth/invalid-email':
             errorMessage = 'Invalid email address';
             break;
-          case 'auth/user-disabled':
-            errorMessage = 'This account has been disabled';
+          case 'auth/operation-not-allowed':
+            errorMessage = 'Email/password accounts are not enabled';
             break;
-          case 'auth/user-not-found':
-            errorMessage = 'No account found with this email';
-            break;
-          case 'auth/wrong-password':
-            errorMessage = 'Incorrect password';
-            break;
-          case 'auth/too-many-requests':
-            errorMessage = 'Too many failed attempts. Please try again later';
+          case 'auth/weak-password':
+            errorMessage = 'Password is too weak';
             break;
           default:
-            errorMessage = error.message || 'Login failed';
+            errorMessage = error.message || 'Signup failed';
         }
         
-        Alert.alert('Login Failed', errorMessage);
+        Alert.alert('Signup Failed', errorMessage);
         return;
       }
 
       if (user) {
-        console.log('Login successful:', user.uid);
-        navigation.navigate('Projects');
+        console.log('Signup successful:', user.uid);
+        Alert.alert(
+          'Account Created!',
+          'Your account has been created successfully. You can now start using Chert.',
+          [
+            {
+              text: 'Get Started',
+              onPress: () => navigation.navigate('Projects'),
+            },
+          ]
+        );
       }
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Login Failed', 'An unexpected error occurred');
+      console.error('Signup error:', error);
+      Alert.alert('Signup Failed', 'An unexpected error occurred');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    if (!email.trim()) {
-      Alert.alert('Reset Password', 'Please enter your email address first');
-      return;
-    }
-
-    try {
-      const { error } = await FirebaseAuthService.resetPassword(email.trim());
-      
-      if (error) {
-        let errorMessage = 'Failed to send reset email';
-        
-        switch (error.code) {
-          case 'auth/invalid-email':
-            errorMessage = 'Invalid email address';
-            break;
-          case 'auth/user-not-found':
-            errorMessage = 'No account found with this email';
-            break;
-          default:
-            errorMessage = error.message || 'Failed to send reset email';
-        }
-        
-        Alert.alert('Error', errorMessage);
-        return;
-      }
-
-      Alert.alert(
-        'Reset Email Sent',
-        'Check your email for password reset instructions'
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send reset email');
     }
   };
 
@@ -143,12 +140,34 @@ export default function Login() {
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Sign in to your Chert account</Text>
+              <Text style={styles.title}>Join Chert</Text>
+              <Text style={styles.subtitle}>Create your account to get started</Text>
             </View>
 
-            {/* Login Form */}
+            {/* Signup Form */}
             <View style={styles.form}>
+              {/* Full Name Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Full Name</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons 
+                    name="person-outline" 
+                    size={20} 
+                    color="#EF9144" 
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Enter your full name"
+                    placeholderTextColor="rgba(37, 51, 94, 0.5)"
+                    value={fullName}
+                    onChangeText={setFullName}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+
               {/* Email Input */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Email</Text>
@@ -184,7 +203,7 @@ export default function Login() {
                   />
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Enter your password"
+                    placeholder="Create a password"
                     placeholderTextColor="rgba(37, 51, 94, 0.5)"
                     value={password}
                     onChangeText={setPassword}
@@ -203,38 +222,64 @@ export default function Login() {
                     />
                   </TouchableOpacity>
                 </View>
+                <Text style={styles.passwordHint}>At least 6 characters</Text>
               </View>
 
-              {/* Forgot Password */}
-              <TouchableOpacity 
-                style={styles.forgotPassword}
-                onPress={handleForgotPassword}
-              >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-              </TouchableOpacity>
+              {/* Confirm Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Confirm Password</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons 
+                    name="lock-closed-outline" 
+                    size={20} 
+                    color="#EF9144" 
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Confirm your password"
+                    placeholderTextColor="rgba(37, 51, 94, 0.5)"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <Ionicons
+                      name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
+                      size={20}
+                      color="rgba(37, 51, 94, 0.6)"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-              {/* Login Button */}
+              {/* Signup Button */}
               <TouchableOpacity
-                style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-                onPress={handleLogin}
+                style={[styles.signupButton, loading && styles.signupButtonDisabled]}
+                onPress={handleSignup}
                 disabled={loading}
               >
                 <LinearGradient
                   colors={loading ? ['#ccc', '#999'] : ['#EF9144', '#FE7E42']}
-                  style={styles.loginButtonGradient}
+                  style={styles.signupButtonGradient}
                 >
-                  <Text style={styles.loginButtonText}>
-                    {loading ? 'Signing In...' : 'Sign In'}
+                  <Text style={styles.signupButtonText}>
+                    {loading ? 'Creating Account...' : 'Create Account'}
                   </Text>
-                  <Ionicons name="log-in-outline" size={20} color="white" />
+                  <Ionicons name="person-add-outline" size={20} color="white" />
                 </LinearGradient>
               </TouchableOpacity>
 
-              {/* Signup Link */}
-              <View style={styles.signupContainer}>
-                <Text style={styles.signupText}>Don't have an account? </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-                  <Text style={styles.signupLink}>Sign Up</Text>
+              {/* Login Link */}
+              <View style={styles.loginContainer}>
+                <Text style={styles.loginText}>Already have an account? </Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                  <Text style={styles.loginLink}>Sign In</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -259,7 +304,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    justifyContent: 'center',
+    paddingTop: 40,
+    paddingBottom: 20,
   },
   header: {
     alignItems: 'center',
@@ -323,18 +369,15 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 4,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 30,
-    marginTop: -10,
+  passwordHint: {
+    fontSize: 12,
+    color: 'rgba(37, 51, 94, 0.6)',
+    marginTop: 4,
+    marginLeft: 4,
   },
-  forgotPasswordText: {
-    fontSize: 14,
-    color: '#EF9144',
-    fontWeight: '600',
-  },
-  loginButton: {
+  signupButton: {
     borderRadius: 12,
+    marginTop: 10,
     marginBottom: 30,
     shadowColor: '#EF9144',
     shadowOffset: {
@@ -345,10 +388,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  loginButtonDisabled: {
+  signupButtonDisabled: {
     opacity: 0.7,
   },
-  loginButtonGradient: {
+  signupButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -356,22 +399,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 12,
   },
-  loginButtonText: {
+  signupButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
     marginRight: 8,
   },
-  signupContainer: {
+  loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  signupText: {
+  loginText: {
     fontSize: 16,
     color: 'rgba(37, 51, 94, 0.7)',
   },
-  signupLink: {
+  loginLink: {
     fontSize: 16,
     color: '#EF9144',
     fontWeight: '600',

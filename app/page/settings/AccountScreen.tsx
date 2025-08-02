@@ -14,10 +14,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { updateProfile, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { RootStackParamList } from '../types';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { RootStackParamList } from '../../types';
 
 type AccountNavigationProp = StackNavigationProp<RootStackParamList>;
 

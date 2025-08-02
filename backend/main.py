@@ -151,15 +151,29 @@ async def process_voice_input(
 ):
     """Process voice input using the LangGraph agent"""
     try:
-        # Save uploaded audio file temporarily (Windows compatible)
+        # Save uploaded audio file temporarily with correct extension
         import tempfile
-        temp_filename = f"temp_audio_{uuid.uuid4()}.wav"
+        
+        # Get file extension from the uploaded file
+        original_filename = audio_file.filename or "audio.wav"
+        file_extension = os.path.splitext(original_filename)[1] or ".wav"
+        
+        # Ensure the extension is supported by OpenAI
+        supported_extensions = ['.flac', '.m4a', '.mp3', '.mp4', '.mpeg', '.mpga', '.oga', '.ogg', '.wav', '.webm']
+        if file_extension.lower() not in supported_extensions:
+            file_extension = ".m4a"  # Default to m4a for mobile recordings
+        
+        temp_filename = f"temp_audio_{uuid.uuid4()}{file_extension}"
         temp_dir = tempfile.gettempdir()
         temp_path = os.path.join(temp_dir, temp_filename)
+        
+        logger.info(f"Saving audio file as: {temp_filename} (original: {original_filename})")
         
         with open(temp_path, "wb") as buffer:
             content = await audio_file.read()
             buffer.write(content)
+        
+        logger.info(f"Audio file saved: {temp_path}, size: {len(content)} bytes")
         
         # Process with voice agent
         result = await voice_agent.process_voice_input(
@@ -179,15 +193,46 @@ async def process_voice_input(
         logger.error(f"Error processing voice input: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/text/process", response_model=VoiceProcessingResponse)
+async def process_text_input(
+    text: str = Form(...),
+    project_id: str = Form(...),
+    context: Optional[str] = Form(None)
+):
+    """Process text input using the LangGraph agent"""
+    try:
+        logger.info(f"Processing text input for project {project_id}: {text}")
+        
+        # Process with voice agent (reusing the voice agent's text processing capability)
+        result = await voice_agent._process_text_input(text, context)
+        
+        logger.info(f"Text processing completed: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error processing text input: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/voice/transcribe")
 async def transcribe_audio(audio_file: UploadFile = File(...)):
     """Transcribe audio to text"""
     try:
-        # Save uploaded audio file temporarily (Windows compatible)
+        # Save uploaded audio file temporarily with correct extension
         import tempfile
-        temp_filename = f"temp_audio_{uuid.uuid4()}.wav"
+        
+        # Get file extension from the uploaded file
+        original_filename = audio_file.filename or "audio.wav"
+        file_extension = os.path.splitext(original_filename)[1] or ".wav"
+        
+        # Ensure the extension is supported by OpenAI
+        supported_extensions = ['.flac', '.m4a', '.mp3', '.mp4', '.mpeg', '.mpga', '.oga', '.ogg', '.wav', '.webm']
+        if file_extension.lower() not in supported_extensions:
+            file_extension = ".m4a"  # Default to m4a for mobile recordings
+        
+        temp_filename = f"temp_audio_{uuid.uuid4()}{file_extension}"
         temp_dir = tempfile.gettempdir()
         temp_path = os.path.join(temp_dir, temp_filename)
+        
+        logger.info(f"Saving audio file for transcription as: {temp_filename}")
         
         with open(temp_path, "wb") as buffer:
             content = await audio_file.read()

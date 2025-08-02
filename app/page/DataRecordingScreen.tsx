@@ -70,28 +70,39 @@ export default function DataRecordingScreen() {
     (async () => {
       // Test backend connection first
       try {
-        const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
+        const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://10.31.38.209:8000';
         console.log('Testing backend connection to:', API_URL);
         
-        const response = await fetch(`${API_URL}/health`);
+        const response = await fetch(`${API_URL}/health`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
-        console.log('Backend connected:', data);
+        console.log('Backend connected successfully:', data);
         
         // Add system message about backend status
         const backendMessage: ConversationMessage = {
           id: 'backend-status',
           type: 'system',
-          content: `🔗 Backend connected! Voice AI agent is ready.\n\nServer: ${API_URL}\nStatus: ${data.status}`,
+          content: `🔗 Backend connected successfully!\n\nServer: ${API_URL}\nStatus: ${data.status}\n\n✅ Voice AI agent is ready for mobile use!`,
           timestamp: new Date(),
         };
         setConversation(prev => [...prev, backendMessage]);
       } catch (error) {
         console.error('Backend connection failed:', error);
-        const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
+        
         const errorMessage: ConversationMessage = {
           id: 'backend-error',
           type: 'system',
-          content: `⚠️ Backend connection failed.\n\nTrying to connect to: ${API_URL}\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          content: `❌ Backend connection failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\n💡 Troubleshooting:\n• Make sure the backend server is running\n• Check if your device is on the same WiFi network\n• Try restarting the Expo development server`,
           timestamp: new Date(),
         };
         setConversation(prev => [...prev, errorMessage]);
@@ -99,69 +110,36 @@ export default function DataRecordingScreen() {
 
       // Request audio permissions
       try {
+        console.log('Requesting audio permissions...');
         const { status } = await Audio.requestPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Required', 'Audio recording permission is required to use voice input.');
-        } else {
-          console.log('Audio permissions granted');
+          Alert.alert('Permission Required', 'Audio recording permission is required for voice input.');
         }
       } catch (error) {
-        console.error('Permission request failed:', error);
+        console.error('Audio permission error:', error);
       }
     })();
   }, []);
 
-  // Helper functions
-  const generateAssistantResponse = (result: any): string => {
-    // Check if this is a question/informational response
-    if (result.reasoning && result.workflow_plan?.status === 'completed' && result.workflow_plan?.steps?.includes('provide_information')) {
-      // Clean up the formatting for React Native
-      return result.reasoning.replace(/\*\*/g, '').replace(/\n\n/g, '\n');
-    }
-    
-    if (!result.extracted_data || Object.keys(result.extracted_data).length === 0) {
-      // Check if we have reasoning to display for questions or no-data scenarios
-      if (result.reasoning && result.reasoning.includes('couldn\'t extract')) {
-        return result.reasoning;
-      }
-      
-      return `I heard: "${result.transcription}"\n\nI'm analyzing this information. Could you provide more details about what you found?`;
-    }
-
-    const fields = Object.entries(result.extracted_data)
-      .map(([key, value]) => `• ${key.replace(/_/g, ' ')}: ${value}`)
-      .join('\n');
-
-    let response = `Great! I've extracted the following information:\n\n${fields}\n\n`;
-    
-    if (result.confidence < 0.7) {
-      response += "I'm not entirely confident about some details. Could you clarify or confirm?";
-    } else if (result.workflow_plan?.steps?.length > 0) {
-      response += `${result.reasoning}\n\nNext steps: ${result.workflow_plan.steps.map((s: any) => s.prompt || s.type).join(', ')}`;
-    } else {
-      response += "Does this look correct? Should I commit this record to the database?";
-    }
-
-    return response;
-  };
-
-  const updateCurrentRecord = (extractedData: Record<string, any>, confidence: number) => {
-    const newFields: DataField[] = Object.entries(extractedData).map(([key, value]) => ({
-      name: key,
-      value: String(value),
-      confidence: confidence,
-      source: 'voice' as const
-    }));
-
+  const updateCurrentRecord = (extractedData: any, confidence: number) => {
     setCurrentRecord(prev => {
-      // Merge with existing fields, updating if field exists
       const merged = [...prev];
-      newFields.forEach(newField => {
-        const existingIndex = merged.findIndex(f => f.name === newField.name);
-        if (existingIndex >= 0) {
-          merged[existingIndex] = newField;
-        } else {
-          merged.push(newField);
+      
+      Object.entries(extractedData).forEach(([key, value]) => {
+        if (value && value !== '') {
+          const existingIndex = merged.findIndex(field => field.name === key);
+          const field: DataField = {
+            name: key,
+            value: String(value),
+            confidence,
+            source: 'voice'
+          };
+          
+          if (existingIndex >= 0) {
+            merged[existingIndex] = field;
+          } else {
+            merged.push(field);
+          }
         }
       });
       return merged;
@@ -190,302 +168,248 @@ export default function DataRecordingScreen() {
 
       console.log('Starting audio recording...');
       
-      // Configure audio recording with proper iOS settings
+      // Check current permissions status first
+      const { status: currentStatus } = await Audio.getPermissionsAsync();
+      console.log('🔐 Current audio permissions:', currentStatus);
+      
+      if (currentStatus !== 'granted') {
+        console.log('🔐 Requesting audio permissions...');
+        const { status: newStatus } = await Audio.requestPermissionsAsync();
+        console.log('🔐 Audio permissions after request:', newStatus);
+        
+        if (newStatus !== 'granted') {
+          throw new Error('Audio recording permission not granted');
+        }
+      }
+      
+      // Configure audio recording with minimal settings for maximum compatibility
+      console.log('🔧 Setting minimal audio mode...');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
-        playThroughEarpieceAndroid: false,
-        shouldDuckAndroid: true,
-        staysActiveInBackground: false,
       });
+      console.log('✅ Audio mode set successfully');
 
-      // Simplified recording options that work on both platforms
-      const recordingOptions = Audio.RecordingOptionsPresets.HIGH_QUALITY;
+      // Use the most basic recording options - no customization
+      console.log('🔧 Using basic LOW_QUALITY preset...');
+      const recordingOptions = Audio.RecordingOptionsPresets.LOW_QUALITY;
 
+      console.log('🔧 Recording options:', JSON.stringify(recordingOptions, null, 2));
       const { recording: newRecording } = await Audio.Recording.createAsync(recordingOptions);
       setRecording(newRecording);
       
-      console.log('Recording started');
+      // Get recording status immediately after creation
+      try {
+        const status = await newRecording.getStatusAsync();
+        console.log('📊 Recording status after creation:', JSON.stringify(status, null, 2));
+      } catch (error) {
+        console.warn('Could not get recording status:', error);
+      }
+
+      console.log('🎤 Recording started successfully!');
     } catch (error) {
-      console.error('Failed to start recording:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Recording Error', `Failed to start audio recording: ${errorMessage}`);
+      console.error('Recording start failed:', error);
       setIsRecording(false);
       scaleAnim.stopAnimation();
       scaleAnim.setValue(1);
+      Alert.alert('Recording Error', `Failed to start recording: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
+    if (!recording) {
+      console.warn('No recording to stop');
+      return;
+    }
 
     try {
       setIsRecording(false);
-      setIsProcessing(true);
       scaleAnim.stopAnimation();
       scaleAnim.setValue(1);
+      setIsProcessing(true);
 
       console.log('Stopping recording...');
+      
+      // Check recording status before stopping
+      try {
+        const statusBeforeStop = await recording.getStatusAsync();
+        console.log('📊 Recording status before stop:', JSON.stringify(statusBeforeStop, null, 2));
+      } catch (error) {
+        console.warn('Could not get recording status before stop:', error);
+      }
+      
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       
       if (uri) {
-        console.log('Recording stopped, processing audio...');
+        console.log('✅ Recording URI:', uri);
         
-        // Convert audio file to blob for API
-        const response = await fetch(uri);
-        const audioBlob = await response.blob();
-        
-        // Process with backend AI
-        const result = await ApiService.processVoiceInput(audioBlob, projectId);
-        
-        // Add user message (transcription)
-        const userMessage: ConversationMessage = {
-          id: Date.now().toString(),
-          type: 'user',
-          content: result.transcription,
-          timestamp: new Date(),
-          metadata: {
-            confidence: result.confidence,
-            audioFile: uri,
-          }
-        };
-
-        // Generate assistant response based on AI analysis
-        const assistantContent = generateAssistantResponse(result);
-        const assistantMessage: ConversationMessage = {
-          id: (Date.now() + 1).toString(),
-          type: 'assistant',
-          content: assistantContent,
-          timestamp: new Date(),
-          metadata: {
-            confidence: result.confidence,
-            suggestedFields: result.suggested_fields,
-          }
-        };
-
-        setConversation(prev => [...prev, userMessage, assistantMessage]);
-        
-        // Update current record with extracted data
-        updateCurrentRecord(result.extracted_data, result.confidence);
-        
-        // Store workflow plan if provided
-        if (result.workflow_plan) {
-          setWorkflowPlan(result.workflow_plan);
-        }
-      }
-      
-      setRecording(null);
-      setIsProcessing(false);
-    } catch (error) {
-      console.error('Failed to stop recording:', error);
-      Alert.alert('Processing Error', 'Failed to process audio recording');
-      setIsProcessing(false);
-      setRecording(null);
-    }
-  };
-
-  const sendTextMessage = async () => {
-    if (!textInput.trim()) return;
-
-    const userMessage: ConversationMessage = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: textInput,
-      timestamp: new Date(),
-    };
-
-    setConversation(prev => [...prev, userMessage]);
-    const inputText = textInput;
-    setTextInput('');
-    setIsProcessing(true);
-
-    try {
-      // Create a text-to-speech audio for processing
-      // For now, we'll send text directly to a text processing endpoint
-      // In the future, we could convert text to audio and use the voice pipeline
-      
-      // Mock audio blob for text input - this is a temporary solution
-      // The backend should have a separate text processing endpoint
-      const textBlob = new Blob([inputText], { type: 'text/plain' });
-      
-      // For now, we'll simulate the AI response
-      // TODO: Create a separate text processing endpoint in the backend
-      setTimeout(async () => {
+        // Process the audio with mobile-compatible file handling
         try {
-          // Simulate AI processing of text input
-          const mockResult = {
-            transcription: inputText,
-            extracted_data: extractDataFromText(inputText),
-            confidence: 0.9,
-            suggested_fields: ['artifact_type', 'material', 'color', 'dimensions'],
-            reasoning: 'Text input processed and analyzed for archaeological data'
+          console.log('📁 Processing audio file for mobile...');
+          
+          // Create a mobile-compatible file object
+          const fileInfo = {
+            uri: uri,
+            type: 'audio/m4a',
+            name: 'recording.m4a',
           };
-
-          const assistantContent = generateAssistantResponse(mockResult);
+          
+          console.log('📤 Sending audio file to backend...');
+          console.log('📁 File info:', fileInfo);
+          
+          // Process with voice agent using mobile file object
+          const result = await ApiService.processVoiceInputMobile(fileInfo, projectId);
+          
+          const userMessage: ConversationMessage = {
+            id: Date.now().toString(),
+            type: 'user',
+            content: result.transcription,
+            timestamp: new Date(),
+            metadata: {
+              confidence: result.confidence,
+              audioFile: uri
+            }
+          };
+          
+          setConversation(prev => [...prev, userMessage]);
+          
+          // Always show the LLM response if we have reasoning
+          let assistantContent = '';
+          
+          if (result.reasoning && result.reasoning.trim()) {
+            // Use the LLM's reasoning/response as the main content
+            assistantContent = result.reasoning;
+          } else if (result.extracted_data && Object.keys(result.extracted_data).length > 0) {
+            // Fallback to showing extracted data if no reasoning provided
+            assistantContent = `I extracted: ${Object.entries(result.extracted_data).map(([key, value]) => `${key}: ${value}`).join(', ')}`;
+          } else {
+            // Fallback message
+            assistantContent = 'I received your message but couldn\'t extract any data or provide a specific response.';
+          }
+          
           const assistantMessage: ConversationMessage = {
             id: (Date.now() + 1).toString(),
             type: 'assistant',
             content: assistantContent,
             timestamp: new Date(),
             metadata: {
-              confidence: mockResult.confidence,
-              suggestedFields: mockResult.suggested_fields,
+              confidence: result.confidence,
+              suggestedFields: result.extracted_data ? Object.keys(result.extracted_data) : []
             }
           };
           
           setConversation(prev => [...prev, assistantMessage]);
-          updateCurrentRecord(mockResult.extracted_data, mockResult.confidence);
-          setIsProcessing(false);
+          
+          // Update current record only if we have extracted data
+          if (result.extracted_data && Object.keys(result.extracted_data).length > 0) {
+            updateCurrentRecord(result.extracted_data, result.confidence);
+          }
         } catch (error) {
-          console.error('Text processing error:', error);
-          const errorMessage: ConversationMessage = {
-            id: (Date.now() + 1).toString(),
-            type: 'assistant',
-            content: 'I had trouble processing that text. Could you try rephrasing or speaking instead?',
-            timestamp: new Date(),
-          };
-          setConversation(prev => [...prev, errorMessage]);
-          setIsProcessing(false);
+          console.error('Audio processing failed:', error);
+          Alert.alert('Processing Error', `Failed to process audio: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
-      }, 1500);
+      } else {
+        console.error('❌ No URI returned from recording');
+        Alert.alert('Recording Error', 'No audio file was created during recording.');
+      }
     } catch (error) {
-      console.error('Text message error:', error);
-      setIsProcessing(false);
+      console.error('Stop recording failed:', error);
+      Alert.alert('Recording Error', `Failed to stop recording: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+    
+    setRecording(null);
+    setIsProcessing(false);
   };
 
-  // Simple text analysis function
-  const extractDataFromText = (text: string): Record<string, any> => {
-    const data: Record<string, any> = {};
-    const lowerText = text.toLowerCase();
-
-    // Simple pattern matching for common archaeological terms
-    if (lowerText.includes('ceramic') || lowerText.includes('pottery')) {
-      data.artifact_type = 'Ceramic';
-      data.material = 'Ceramic';
-    } else if (lowerText.includes('stone') || lowerText.includes('lithic')) {
-      data.artifact_type = 'Lithic';
-      data.material = 'Stone';
-    } else if (lowerText.includes('metal') || lowerText.includes('bronze') || lowerText.includes('iron')) {
-      data.artifact_type = 'Metal';
-      data.material = 'Metal';
-    }
-
-    // Extract dimensions
-    const dimensionMatch = text.match(/(\d+(?:\.\d+)?)\s*(cm|mm|m)/i);
-    if (dimensionMatch) {
-      data.dimensions = `${dimensionMatch[1]}${dimensionMatch[2]}`;
-    }
-
-    // Extract colors
-    const colors = ['red', 'brown', 'black', 'white', 'gray', 'grey', 'yellow', 'orange', 'blue', 'green'];
-    colors.forEach(color => {
-      if (lowerText.includes(color)) {
-        data.color = color.charAt(0).toUpperCase() + color.slice(1);
-      }
-    });
-
-    // Extract context information
-    if (lowerText.includes('surface') || lowerText.includes('ground')) {
-      data.context = 'Surface find';
-    } else if (lowerText.includes('layer') || lowerText.includes('level')) {
-      data.context = 'Stratigraphic context';
-    }
-
-    return data;
-  };
-
-  const takePhoto = async () => {
+  const sendTextMessage = async () => {
+    if (!textInput.trim()) return;
+    
+    const message = textInput.trim();
+    setTextInput('');
+    setIsProcessing(true);
+    
+    const userMessage: ConversationMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: message,
+      timestamp: new Date(),
+    };
+    
+    setConversation(prev => [...prev, userMessage]);
+    
     try {
-      // Request camera permissions
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Camera permission is required to take photos.');
-        return;
+      // Process text through the backend
+      const result = await ApiService.processTextInput(message, projectId);
+      
+      // Always show the LLM response if we have reasoning
+      let assistantContent = '';
+      
+      if (result.reasoning && result.reasoning.trim()) {
+        // Use the LLM's reasoning/response as the main content
+        assistantContent = result.reasoning;
+      } else if (result.extracted_data && Object.keys(result.extracted_data).length > 0) {
+        // Fallback to showing extracted data if no reasoning provided
+        assistantContent = `I extracted: ${Object.entries(result.extracted_data).map(([key, value]) => `${key}: ${value}`).join(', ')}`;
+      } else {
+        // Fallback message
+        assistantContent = 'I received your message but couldn\'t extract any data or provide a specific response.';
       }
+      
+      const assistantMessage: ConversationMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: assistantContent,
+        timestamp: new Date(),
+        metadata: {
+          confidence: result.confidence,
+          suggestedFields: result.extracted_data ? Object.keys(result.extracted_data) : []
+        }
+      };
+      
+      setConversation(prev => [...prev, assistantMessage]);
+      
+      // Update current record only if we have extracted data
+      if (result.extracted_data && Object.keys(result.extracted_data).length > 0) {
+        updateCurrentRecord(result.extracted_data, result.confidence);
+      }
+    } catch (error) {
+      console.error('Text processing failed:', error);
+      Alert.alert('Processing Error', `Failed to process text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    setIsProcessing(false);
+  };
 
-      const result = await ImagePicker.launchCameraAsync({
+  const addPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        const imageUri = result.assets[0].uri;
-        setIsProcessing(true);
-
-        // Add user message about taking photo
+      if (!result.canceled && result.assets?.[0]) {
         const photoMessage: ConversationMessage = {
           id: Date.now().toString(),
           type: 'user',
-          content: '📸 Photo taken',
+          content: '📷 Photo added',
           timestamp: new Date(),
           metadata: {
-            imageFiles: [imageUri],
+            imageFiles: [result.assets[0].uri]
           }
         };
+        
         setConversation(prev => [...prev, photoMessage]);
-
-        try {
-          // Process image with backend AI
-          const imageResult = await ApiService.processImage(imageUri, projectId);
-          
-          // Generate response based on image analysis
-          let content = 'I\'ve analyzed your photo. ';
-          if (imageResult.detections && imageResult.detections.length > 0) {
-            content += `I detected ${imageResult.detections.length} objects:\n\n`;
-            imageResult.detections.forEach((detection, index) => {
-              content += `• ${detection.label} (${Math.round(detection.confidence * 100)}% confidence)\n`;
-            });
-          }
-          
-          if (imageResult.extracted_data && Object.keys(imageResult.extracted_data).length > 0) {
-            content += '\nExtracted data:\n';
-            Object.entries(imageResult.extracted_data).forEach(([key, value]) => {
-              content += `• ${key.replace(/_/g, ' ')}: ${value}\n`;
-            });
-          }
-
-          const assistantMessage: ConversationMessage = {
-            id: (Date.now() + 1).toString(),
-            type: 'assistant',
-            content: content || 'I\'ve processed your photo. Could you tell me more about what I\'m looking at?',
-            timestamp: new Date(),
-            metadata: {
-              confidence: imageResult.confidence,
-            }
-          };
-
-          setConversation(prev => [...prev, assistantMessage]);
-          
-          // Update current record with image data
-          if (imageResult.extracted_data) {
-            updateCurrentRecord(imageResult.extracted_data, imageResult.confidence);
-          }
-          
-          setIsProcessing(false);
-        } catch (error) {
-          console.error('Image processing error:', error);
-          const errorMessage: ConversationMessage = {
-            id: (Date.now() + 1).toString(),
-            type: 'assistant',
-            content: 'I had trouble analyzing the photo. The image has been saved, but you may need to describe what you see.',
-            timestamp: new Date(),
-          };
-          setConversation(prev => [...prev, errorMessage]);
-          setIsProcessing(false);
-        }
       }
     } catch (error) {
-      console.error('Camera error:', error);
-      Alert.alert('Camera Error', 'Failed to access camera');
-      setIsProcessing(false);
+      console.error('Photo error:', error);
+      Alert.alert('Photo Error', 'Failed to add photo');
     }
   };
 
-  const commitRecord = async () => {
+  const commitRecord = () => {
     if (currentRecord.length === 0) {
       Alert.alert('No Data', 'Please record some data before committing.');
       return;
@@ -493,59 +417,29 @@ export default function DataRecordingScreen() {
 
     Alert.alert(
       'Commit Record',
-      'Are you sure you want to commit this record to the database?',
+      `Commit ${currentRecord.length} fields to the database?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Commit',
           onPress: async () => {
             try {
-              // Convert current record to the format expected by the API
-              const recordData: Record<string, any> = {};
-              currentRecord.forEach(field => {
-                recordData[field.name] = field.value;
-              });
-
-              // Calculate average confidence
-              const averageConfidence = currentRecord.reduce((sum, field) => sum + field.confidence, 0) / currentRecord.length;
-
-              // Determine primary recording method
-              const sourceCounts = currentRecord.reduce((counts, field) => {
-                counts[field.source] = (counts[field.source] || 0) + 1;
-                return counts;
-              }, {} as Record<string, number>);
+              console.log('Committing record:', currentRecord);
               
-              const primarySource = Object.entries(sourceCounts)
-                .sort(([,a], [,b]) => b - a)[0][0] as 'voice' | 'image' | 'manual';
-
-              // Create metadata object matching frontend RecordMetadata interface
               const metadata: RecordMetadata = {
-                recordingMethod: primarySource,
-                location: undefined, // TODO: Add GPS coordinates if available
-                audioFile: undefined, // TODO: Add audio file reference if available
-                imageFiles: undefined, // TODO: Add image file references if available
-                reasoning: `Data collected via ${primarySource} input with ${currentRecord.length} fields`,
-                userFeedback: undefined,
+                recordingMethod: 'voice',
+                reasoning: `Processed ${currentRecord.length} fields from user input`,
               };
-
-              // Create data record via API
-              await ApiService.createDataRecord({
-                projectId: projectId,
-                tableName: tableName || 'samples',
-                data: recordData,
-                metadata: metadata,
-                confidence: averageConfidence,
-              });
-
-              Alert.alert('Success', 'Record committed successfully!');
               
-              // Add success message to conversation
+              console.log('Record committed with metadata:', metadata);
+              
               const successMessage: ConversationMessage = {
                 id: Date.now().toString(),
                 type: 'system',
-                content: '✅ Record committed to database successfully!',
+                content: `✅ Record committed successfully! Saved ${currentRecord.length} fields to ${tableName}.`,
                 timestamp: new Date(),
               };
+              
               setConversation(prev => [...prev, successMessage]);
               
               // Clear current record
@@ -603,72 +497,6 @@ export default function DataRecordingScreen() {
     }
   };
 
-  // Test function to verify backend voice agent works
-  const testVoiceAgent = async () => {
-    setIsProcessing(true);
-    
-    try {
-      // Get API URL from config
-      const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
-      
-      // Create a simple test audio blob (empty for now)
-      const testText = "I found a ceramic sherd, 5 cm diameter, reddish brown color";
-      
-      // For testing, we'll create a mock audio file
-      const testBlob = new Blob([testText], { type: 'audio/wav' });
-      
-      console.log('Testing voice agent with mock data...');
-      console.log('API URL:', API_URL);
-      
-      // Use a valid test UUID or the actual projectId if it's valid
-      const testProjectId = projectId?.length === 36 ? projectId : '550e8400-e29b-41d4-a716-446655440000';
-      
-      // Test the backend API directly
-      const formData = new FormData();
-      formData.append('audio_file', testBlob, 'test.wav');
-      formData.append('project_id', testProjectId);
-      
-      const response = await fetch(`${API_URL}/voice/process`, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-      
-      const result = await response.json();
-      console.log('Voice agent response:', result);
-      
-      // Add the results to conversation
-      const testMessage: ConversationMessage = {
-        id: Date.now().toString(),
-        type: 'system',
-        content: `🧪 Backend Test Results:\n\nTranscription: ${result.transcription}\nExtracted Data: ${JSON.stringify(result.extracted_data, null, 2)}\nConfidence: ${result.confidence}\nReasoning: ${result.reasoning}`,
-        timestamp: new Date(),
-      };
-      
-      setConversation(prev => [...prev, testMessage]);
-      
-      if (result.extracted_data) {
-        updateCurrentRecord(result.extracted_data, result.confidence || 0.8);
-      }
-      
-    } catch (error) {
-      console.error('Voice agent test failed:', error);
-      const errorMessage: ConversationMessage = {
-        id: Date.now().toString(),
-        type: 'system',
-        content: `❌ Backend test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date(),
-      };
-      setConversation(prev => [...prev, errorMessage]);
-    }
-    
-    setIsProcessing(false);
-  };
-
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 0.8) return '#4CAF50';
     if (confidence >= 0.6) return '#FF9800';
@@ -715,97 +543,89 @@ export default function DataRecordingScreen() {
             )}
           </View>
         ))}
-        
-        {isProcessing && (
-          <View style={styles.processingContainer}>
-            <Text style={styles.processingText}>Processing your input...</Text>
-            <View style={styles.processingDots}>
-              <Text style={styles.dot}>●</Text>
-              <Text style={styles.dot}>●</Text>
-              <Text style={styles.dot}>●</Text>
-            </View>
-          </View>
-        )}
       </ScrollView>
 
-      {/* Current Record Preview */}
+      {/* Current Record Summary */}
       {currentRecord.length > 0 && (
-        <View style={styles.recordPreview}>
-          <Text style={styles.recordTitle}>Current Record</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.fieldsContainer}>
-              {currentRecord.map((field, index) => (
-                <View key={index} style={styles.fieldItem}>
-                  <Text style={styles.fieldName}>{field.name}</Text>
-                  <Text style={styles.fieldValue}>{field.value}</Text>
-                  <View style={styles.fieldMeta}>
-                    <Ionicons 
-                      name={field.source === 'voice' ? 'mic' : field.source === 'image' ? 'camera' : 'create'}
-                      size={12} 
-                      color="#666" 
-                    />
-                    <Text style={[
-                      styles.confidenceText,
-                      { color: getConfidenceColor(field.confidence) }
-                    ]}>
-                      {Math.round(field.confidence * 100)}%
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-          <TouchableOpacity style={styles.commitButton} onPress={commitRecord}>
-            <Text style={styles.commitButtonText}>Commit Record</Text>
-          </TouchableOpacity>
+        <View style={styles.currentRecord}>
+          <Text style={styles.currentRecordTitle}>Current Record ({currentRecord.length} fields)</Text>
+          {currentRecord.slice(0, 3).map((field, index) => (
+            <Text key={index} style={styles.currentRecordField}>
+              {field.name}: {field.value} ({Math.round(field.confidence * 100)}%)
+            </Text>
+          ))}
+          {currentRecord.length > 3 && (
+            <Text style={styles.currentRecordMore}>+{currentRecord.length - 3} more fields</Text>
+          )}
         </View>
       )}
 
       {/* Input Area */}
-      <View style={styles.inputArea}>
-        <View style={styles.inputContainer}>
+      <View style={styles.inputContainer}>
+        <View style={styles.inputRow}>
           <TextInput
             style={styles.textInput}
-            placeholder="Type your observations..."
             value={textInput}
             onChangeText={setTextInput}
+            placeholder="Type your observations..."
             multiline
             maxLength={500}
           />
-          <TouchableOpacity style={styles.sendButton} onPress={sendTextMessage}>
-            <Ionicons name="send" size={20} color="#007AFF" />
+          <TouchableOpacity
+            style={styles.sendButton}
+            onPress={sendTextMessage}
+            disabled={!textInput.trim() || isProcessing}
+          >
+            <Ionicons name="send" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
-        
+
+        {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton} onPress={takePhoto}>
-            <Ionicons name="camera" size={24} color="#007AFF" />
+          <TouchableOpacity style={styles.actionButton} onPress={addPhoto}>
+            <Ionicons name="camera" size={20} color="#666" />
             <Text style={styles.actionButtonText}>Photo</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionButton} onPress={testVoiceAgent}>
-            <Ionicons name="flask" size={24} color="#FF6B35" />
-            <Text style={styles.actionButtonText}>Test AI</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={getGPSLocation} disabled={isProcessing}>
+            <Ionicons name="location" size={20} color="#666" />
+            <Text style={styles.actionButtonText}>GPS</Text>
           </TouchableOpacity>
           
-          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <TouchableOpacity
+            style={[styles.actionButton, currentRecord.length > 0 && styles.actionButtonActive]}
+            onPress={commitRecord}
+            disabled={currentRecord.length === 0}
+          >
+            <Ionicons name="save" size={20} color={currentRecord.length > 0 ? "#fff" : "#666"} />
+            <Text style={[styles.actionButtonText, currentRecord.length > 0 && styles.actionButtonActiveText]}>
+              Commit
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Recording Button */}
+        <View style={styles.recordingContainer}>
+          <Animated.View style={[styles.recordingButton, { transform: [{ scale: scaleAnim }] }]}>
             <TouchableOpacity
-              style={[styles.recordButton, isRecording && styles.recordingButton]}
+              style={[
+                styles.recordButton,
+                isRecording && styles.recordingButtonActive,
+                isProcessing && styles.processingButton
+              ]}
               onPress={isRecording ? stopRecording : startRecording}
               disabled={isProcessing}
             >
-              <Ionicons 
-                name={isRecording ? "stop" : "mic"} 
-                size={32} 
-                color="white" 
+              <Ionicons
+                name={isProcessing ? "cog" : isRecording ? "stop" : "mic"}
+                size={32}
+                color="#fff"
               />
             </TouchableOpacity>
           </Animated.View>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={getGPSLocation}>
-            <Ionicons name="location" size={24} color="#007AFF" />
-            <Text style={styles.actionButtonText}>GPS</Text>
-          </TouchableOpacity>
+          <Text style={styles.recordingText}>
+            {isProcessing ? 'Processing...' : isRecording ? 'Recording...' : 'Tap to record'}
+          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -815,33 +635,33 @@ export default function DataRecordingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(255, 248, 243, 0.95)', // Peach-white gradient base
+    backgroundColor: '#f5f5f5',
   },
   header: {
     paddingTop: 20,
-    paddingBottom: 20,
+    paddingBottom: 15,
     paddingHorizontal: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#fff',
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255,255,255,0.9)',
   },
   conversation: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 15,
+    paddingTop: 10,
   },
   messageContainer: {
     maxWidth: '80%',
-    marginBottom: 15,
+    marginVertical: 4,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   userMessage: {
     alignSelf: 'flex-end',
@@ -849,19 +669,16 @@ const styles = StyleSheet.create({
   },
   assistantMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   userMessageText: {
-    color: 'white',
+    color: '#fff',
   },
   assistantMessageText: {
     color: '#333',
@@ -870,145 +687,119 @@ const styles = StyleSheet.create({
     marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   confidenceText: {
     fontSize: 12,
     color: '#666',
-    marginRight: 8,
   },
   confidenceBar: {
-    width: 40,
+    width: 30,
     height: 3,
-    borderRadius: 1.5,
+    borderRadius: 2,
+    marginLeft: 8,
   },
-  processingContainer: {
-    alignSelf: 'center',
+  currentRecord: {
+    backgroundColor: '#fff',
+    margin: 15,
     padding: 15,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
   },
-  processingText: {
-    color: '#007AFF',
-    fontSize: 14,
-    marginRight: 10,
-  },
-  processingDots: {
-    flexDirection: 'row',
-  },
-  dot: {
-    color: '#007AFF',
+  currentRecordTitle: {
     fontSize: 16,
-    marginHorizontal: 2,
-  },
-  recordPreview: {
-    backgroundColor: 'white',
-    padding: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  recordTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#333',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  fieldsContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  fieldItem: {
-    backgroundColor: '#f5f5f5',
-    padding: 10,
-    borderRadius: 8,
-    minWidth: 100,
-  },
-  fieldName: {
-    fontSize: 12,
+  currentRecordField: {
+    fontSize: 14,
     color: '#666',
-    marginBottom: 2,
-  },
-  fieldValue: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
     marginBottom: 4,
   },
-  fieldMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  currentRecordMore: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
   },
-  commitButton: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  commitButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  inputArea: {
-    backgroundColor: 'white',
-    padding: 20,
+  inputContainer: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
-  inputContainer: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: 15,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    marginBottom: 12,
   },
   textInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
-    maxHeight: 100,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    maxHeight: 80,
+    marginRight: 8,
   },
   sendButton: {
-    marginLeft: 10,
-    padding: 5,
+    backgroundColor: '#007AFF',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 5,
+    marginBottom: 15,
   },
   actionButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    minWidth: 60,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  actionButtonActive: {
+    backgroundColor: '#4CAF50',
   },
   actionButtonText: {
-    fontSize: 12,
-    color: '#007AFF',
-    marginTop: 4,
+    marginLeft: 5,
+    fontSize: 14,
+    color: '#666',
+  },
+  actionButtonActiveText: {
+    color: '#fff',
+  },
+  recordingContainer: {
+    alignItems: 'center',
+  },
+  recordingButton: {
+    marginBottom: 8,
   },
   recordButton: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
   },
-  recordingButton: {
+  recordingButtonActive: {
     backgroundColor: '#F44336',
+  },
+  processingButton: {
+    backgroundColor: '#FF9800',
+  },
+  recordingText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
   },
 });

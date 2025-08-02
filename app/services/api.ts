@@ -4,7 +4,7 @@ import type { Project, DataRecord, RecentActivity } from '../types';
 import { supabase } from './supabase';
 
 // Get API URL from environment
-const API_URL = Constants.expoConfig?.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = Constants.expoConfig?.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL || 'http://10.31.38.209:8000';
 
 // API service for backend integration
 export class ApiService {
@@ -199,6 +199,68 @@ export class ApiService {
     }
   }
 
+  // AI/Voice Processing - Mobile compatible version
+  static async processVoiceInputMobile(fileInfo: { uri: string; type: string; name: string }, projectId: string): Promise<{
+    transcription: string;
+    extracted_data: Record<string, any>;
+    confidence: number;
+    suggested_fields: string[];
+    reasoning: string;
+    commit_id?: string;
+    workflow_plan?: any;
+    tool_events?: any[];
+  }> {
+    try {
+      console.log('🚀 Preparing to send mobile audio file:', fileInfo);
+      
+      const formData = new FormData();
+      
+      // On mobile, FormData can accept a file URI directly
+      formData.append('audio_file', {
+        uri: fileInfo.uri,
+        type: fileInfo.type,
+        name: fileInfo.name,
+      } as any);
+      
+      formData.append('project_id', projectId);
+      
+      console.log('📋 Mobile FormData prepared with:');
+      console.log('  - audio_file:', fileInfo.name, 'URI:', fileInfo.uri);
+      console.log('  - project_id:', projectId);
+
+      const response = await fetch(`${this.baseUrl}/voice/process`, {
+        method: 'POST',
+        body: formData,
+        // Don't set Content-Type header - let the browser set it with boundary for FormData
+      });
+
+      console.log('📥 Backend response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Backend error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Voice processing successful:', result);
+      
+      return {
+        transcription: result.transcription,
+        extracted_data: result.extracted_data || {},
+        confidence: result.confidence || 0.0,
+        suggested_fields: result.suggested_fields || [],
+        reasoning: result.reasoning || '',
+        commit_id: result.commit_id,
+        workflow_plan: result.workflow_plan,
+        tool_events: result.tool_events
+      };
+    } catch (error) {
+      console.error('🚨 Mobile voice processing failed:', error);
+      throw error;
+    }
+  }
+
   // AI/Voice Processing
   static async processVoiceInput(audioBlob: Blob, projectId: string): Promise<{
     transcription: string;
@@ -211,20 +273,58 @@ export class ApiService {
     tool_events?: any[];
   }> {
     try {
+      // Verify the blob has content before sending
+      if (audioBlob.size === 0) {
+        throw new Error('Audio blob is empty - cannot process');
+      }
+      
+      console.log('🚀 Preparing to send audio blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
+      
       const formData = new FormData();
-      formData.append('audio_file', audioBlob, 'audio.wav');
+      
+      // Determine file extension based on blob type or default to m4a
+      let fileName = 'audio.m4a';
+      let mimeType = audioBlob.type;
+      
+      if (mimeType.includes('webm')) {
+        fileName = 'audio.webm';
+      } else if (mimeType.includes('wav')) {
+        fileName = 'audio.wav';
+      } else if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+        fileName = 'audio.m4a';
+      } else if (mimeType.includes('ogg')) {
+        fileName = 'audio.ogg';
+      } else if (mimeType.includes('mpeg') || mimeType.includes('mp3')) {
+        fileName = 'audio.mp3';
+      }
+      
+      console.log('📤 Sending audio file:', fileName, 'MIME type:', mimeType, 'Size:', audioBlob.size);
+      
+      // Create the file object for FormData
+      formData.append('audio_file', audioBlob, fileName);
       formData.append('project_id', projectId);
+      
+      // Log FormData contents for debugging
+      console.log('📋 FormData prepared with:');
+      console.log('  - audio_file:', fileName, `(${audioBlob.size} bytes)`);
+      console.log('  - project_id:', projectId);
 
       const response = await fetch(`${this.baseUrl}/voice/process`, {
         method: 'POST',
         body: formData,
+        // Don't set Content-Type header - let the browser set it with boundary for FormData
       });
 
+      console.log('📥 Backend response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Backend error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
       const result = await response.json();
+      console.log('✅ Voice processing successful:', result);
       
       return {
         transcription: result.transcription,
@@ -237,6 +337,7 @@ export class ApiService {
         tool_events: result.tool_events || []
       };
     } catch (error) {
+      console.error('❌ Voice processing API error:', error);
       console.log('Using fallback data due to API error:', error);
       
       // Mock response for development
@@ -261,6 +362,60 @@ export class ApiService {
           ]
         }
       };
+    }
+  }
+
+  // Text Processing - Process text input through the AI agent
+  static async processTextInput(text: string, projectId: string): Promise<{
+    transcription: string;
+    extracted_data: Record<string, any>;
+    confidence: number;
+    suggested_fields: string[];
+    reasoning: string;
+    commit_id?: string;
+    workflow_plan?: any;
+    tool_events?: any[];
+  }> {
+    try {
+      console.log('🚀 Processing text input:', text);
+      
+      const formData = new FormData();
+      formData.append('text', text);
+      formData.append('project_id', projectId);
+      
+      console.log('📋 FormData prepared with:');
+      console.log('  - text:', text);
+      console.log('  - project_id:', projectId);
+
+      const response = await fetch(`${this.baseUrl}/text/process`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('📥 Backend response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Backend error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Text processing successful:', result);
+      
+      return {
+        transcription: result.transcription || text,
+        extracted_data: result.extracted_data || {},
+        confidence: result.confidence || 0.0,
+        suggested_fields: result.suggested_fields || [],
+        reasoning: result.reasoning || '',
+        commit_id: result.commit_id,
+        workflow_plan: result.workflow_plan,
+        tool_events: result.tool_events || []
+      };
+    } catch (error) {
+      console.error('🚨 Text processing failed:', error);
+      throw error;
     }
   }
 

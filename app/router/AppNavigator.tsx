@@ -11,8 +11,7 @@ import DashboardScreen from '../page/DashboardScreen';
 import ProjectsScreen from '../page/projects/ProjectsScreen';
 import SettingsScreen from '../page/settings/SettingsScreen';
 import CreateProjectScreen from '../page/projects/CreateProjectScreen';
-import ProjectDetailScreen from '../page/projects/ProjectDetailScreen';
-import DataRecordingScreen from '../page/database/DataRecordingScreen';
+import EnhancedProjectDetailScreen from '../page/projects/EnhancedProjectDetailScreen';
 import DataLogsScreen from '../page/database/DataLogsScreen';
 import DatabaseSchemaScreen from '../page/database/DatabaseSchemaScreen';
 import DataSchemaConfigScreen from '../page/database/DataSchemaConfigScreen';
@@ -118,16 +117,8 @@ export default function AppNavigator() {
           />
           <Stack.Screen 
             name="ProjectDetail" 
-            component={ProjectDetailScreen}
+            component={EnhancedProjectDetailScreen}
             options={{ title: 'Project Details' }}
-          />
-          <Stack.Screen 
-            name="DataRecording" 
-            component={DataRecordingScreen}
-            options={{ 
-              title: 'Record Data',
-              presentation: 'modal'
-            }}
           />
           <Stack.Screen 
             name="DataLogs" 

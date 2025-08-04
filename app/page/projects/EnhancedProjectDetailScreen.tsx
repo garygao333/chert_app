@@ -17,6 +17,8 @@ import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList, Project } from '../../types/index.js';
 import FirebaseService from '../../services/firebaseService';
 import { useAuth } from '../../contexts/AuthContext';
+import { DataProcessingService } from '../../services/dataProcessingService';
+import { VoiceService } from '../../services/voiceService';
 
 type ProjectDetailNavigationProp = StackNavigationProp<RootStackParamList>;
 type ProjectDetailRouteProp = RouteProp<RootStackParamList, 'ProjectDetail'>;
@@ -56,6 +58,9 @@ export default function EnhancedProjectDetailScreen() {
   });
   const [editingAnnotations, setEditingAnnotations] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [processingVoice, setProcessingVoice] = useState(false);
+  const [showQuickTips, setShowQuickTips] = useState(true);
+  const [examplePrompts, setExamplePrompts] = useState<string[]>([]);
 
   const { projectId } = route.params;
 
@@ -74,6 +79,10 @@ export default function EnhancedProjectDetailScreen() {
           general: projectData.generalAnnotations || '',
           columns: projectData.columnAnnotations || {},
         });
+
+        // Generate example prompts based on project schema
+        const examples = DataProcessingService.generateExamplePrompts(projectData);
+        setExamplePrompts(examples);
       } else {
         Alert.alert('Error', 'Project not found');
         navigation.goBack();
@@ -119,27 +128,11 @@ export default function EnhancedProjectDetailScreen() {
     setProcessingChat(true);
 
     try {
-      // Simple processing - in a real app you'd call an AI API
-      const processedData: Record<string, string> = {};
+      // Use intelligent data processing service
+      const result = await DataProcessingService.processInput(chatInput, project, 'chat');
       
-      // Basic keyword extraction for demo purposes
-      const input = chatInput.toLowerCase();
-      if (project.dataColumns) {
-        project.dataColumns.forEach(column => {
-          const columnLower = column.toLowerCase();
-          if (input.includes(columnLower)) {
-            // Extract value after the column name
-            const parts = input.split(columnLower);
-            if (parts.length > 1) {
-              const value = parts[1].trim().split(' ')[0];
-              processedData[column] = value;
-            }
-          }
-        });
-      }
-
       const newRow: LocalDataRow = {
-        ...processedData,
+        ...result.processedData,
         timestamp: new Date().toLocaleString(),
         method: 'chat',
         source: chatInput,
@@ -147,11 +140,13 @@ export default function EnhancedProjectDetailScreen() {
       
       setLocalTableData(prev => [...prev, newRow]);
       
+      const confidencePercent = Math.round(result.confidence * 100);
       setChat(prev => [...prev, { 
         role: 'assistant', 
-        text: `✅ Row added to local table. Processed data for ${Object.keys(processedData).length} columns.` 
+        text: `✅ Row added to local table. Processed with ${confidencePercent}% confidence.\n\n${result.reasoning}` 
       }]);
       
+      console.log("Data processed and added to local table:", newRow);
       setChatInput('');
     } catch (error) {
       console.error('Error processing chat input:', error);
@@ -214,6 +209,81 @@ export default function EnhancedProjectDetailScreen() {
       Alert.alert('Error', 'Failed to save annotations');
     }
   };
+
+  const handleVoiceRecording = async () => {
+    if (isRecording) {
+      // Stop recording
+      setProcessingVoice(true);
+      try {
+        const audioUri = await VoiceService.stopRecording();
+        setIsRecording(false);
+        
+        if (audioUri) {
+          // Process the audio to text
+          const voiceResult = await VoiceService.processAudioToText(audioUri);
+          
+          if (voiceResult.transcript) {
+            // Add the transcript to chat
+            setChat(prev => [...prev, { 
+              role: 'user', 
+              text: `🎤 Voice: ${voiceResult.transcript}` 
+            }]);
+            
+            // Process the transcript using our intelligent processing
+            const result = await DataProcessingService.processInput(
+              voiceResult.transcript, 
+              project!, 
+              'voice'
+            );
+            
+            const newRow: LocalDataRow = {
+              ...result.processedData,
+              timestamp: new Date().toLocaleString(),
+              method: 'voice',
+              source: voiceResult.transcript,
+            };
+            
+            setLocalTableData(prev => [...prev, newRow]);
+            
+            const confidencePercent = Math.round(result.confidence * 100);
+            setChat(prev => [...prev, { 
+              role: 'assistant', 
+              text: `✅ Voice recording processed and added to local table. Processed with ${confidencePercent}% confidence.\n\n${result.reasoning}` 
+            }]);
+            
+            // Optional: Provide audio feedback
+            await VoiceService.speakText(`Data recorded successfully with ${confidencePercent} percent confidence`);
+          }
+        }
+      } catch (error) {
+        console.error('Error processing voice recording:', error);
+        setChat(prev => [...prev, { 
+          role: 'assistant', 
+          text: "❗ Failed to process voice recording. Please try again." 
+        }]);
+        Alert.alert('Error', 'Failed to process voice recording');
+      } finally {
+        setProcessingVoice(false);
+      }
+    } else {
+      // Start recording
+      const success = await VoiceService.startRecording();
+      if (success) {
+        setIsRecording(true);
+        setChat(prev => [...prev, { 
+          role: 'assistant', 
+          text: "🎤 Recording started. Speak clearly about your observations..." 
+        }]);
+      }
+    }
+  };
+
+  // Cleanup voice service on unmount
+  useEffect(() => {
+    return () => {
+      VoiceService.cleanup();
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -296,13 +366,38 @@ export default function EnhancedProjectDetailScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {activeTab === 'collect' && (
           <View style={styles.tabContent}>
+            {/* Quick Tips Banner */}
+            {showQuickTips && localTableData.length === 0 && (
+              <View style={styles.quickTipsContainer}>
+                <TouchableOpacity
+                  style={styles.quickTipsClose}
+                  onPress={() => setShowQuickTips(false)}
+                >
+                  <Ionicons name="close" size={16} color="#666" />
+                </TouchableOpacity>
+                <View style={styles.quickTipsContent}>
+                  <View style={styles.quickTipsIcon}>
+                    <Ionicons name="information-circle" size={20} color="#3B82F6" />
+                  </View>
+                  <View style={styles.quickTipsText}>
+                    <Text style={styles.quickTipsTitle}>Quick Tips for Data Collection</Text>
+                    <Text style={styles.quickTipsSubtitle}>
+                      • Describe observations naturally - AI will map to correct columns{'\n'}
+                      • Include context like location, measurements, and conditions{'\n'}
+                      • Review entries before syncing to Firebase
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
             {/* Voice Recording Card */}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Voice Recording</Text>
               <View style={styles.voiceContainer}>
                 <TouchableOpacity
                   style={[styles.recordButton, isRecording && styles.recordingButton]}
-                  onPress={() => setIsRecording(!isRecording)}
+                  onPress={handleVoiceRecording}
+                  disabled={processingVoice}
                 >
                   <Ionicons 
                     name={isRecording ? "stop" : "mic"} 
@@ -311,7 +406,11 @@ export default function EnhancedProjectDetailScreen() {
                   />
                 </TouchableOpacity>
                 <Text style={styles.recordStatus}>
-                  {isRecording ? 'Recording...' : 'Tap to record'}
+                  {processingVoice 
+                    ? 'Processing...' 
+                    : isRecording 
+                    ? 'Recording... Tap to stop' 
+                    : 'Tap to record'}
                 </Text>
               </View>
             </View>
@@ -319,6 +418,24 @@ export default function EnhancedProjectDetailScreen() {
             {/* Text Entry Card */}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Text Entry</Text>
+              
+              {/* Example Prompts */}
+              {chatInput.length === 0 && records.length < 3 && examplePrompts.length > 0 && (
+                <View style={styles.examplePromptsContainer}>
+                  <Text style={styles.examplePromptsTitle}>Example entries:</Text>
+                  <View style={styles.examplePromptsWrapper}>
+                    {examplePrompts.map((example, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.examplePromptButton}
+                        onPress={() => setChatInput(example)}
+                      >
+                        <Text style={styles.examplePromptText}>{example}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
               
               {/* Chat Messages */}
               {chat.length > 0 && (
@@ -885,5 +1002,73 @@ const styles = StyleSheet.create({
   },
   columnAnnotation: {
     marginBottom: 15,
+  },
+  quickTipsContainer: {
+    backgroundColor: '#EBF8FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    position: 'relative',
+  },
+  quickTipsClose: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 4,
+  },
+  quickTipsContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  quickTipsIcon: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#DBEAFE',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  quickTipsText: {
+    flex: 1,
+    paddingRight: 20,
+  },
+  quickTipsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  quickTipsSubtitle: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+  },
+  examplePromptsContainer: {
+    marginBottom: 16,
+  },
+  examplePromptsTitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  examplePromptsWrapper: {
+    gap: 8,
+  },
+  examplePromptButton: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  examplePromptText: {
+    fontSize: 13,
+    color: '#374151',
+    lineHeight: 18,
   },
 });

@@ -189,7 +189,7 @@ export default function ProjectsScreen() {
                   {project.dataColumns && project.dataColumns.length > 0 && (
                     <TouchableOpacity 
                       style={styles.actionButton}
-                      onPress={() => navigation.navigate('DataRecording', { projectId: project.id })}
+                      onPress={() => navigation.navigate('ProjectDetail', { projectId: project.id })}
                     >
                       <Ionicons name="mic" size={14} color="#4CAF50" />
                       <Text style={styles.actionText}>Record</Text>

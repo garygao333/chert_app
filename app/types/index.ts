@@ -106,7 +106,6 @@ export type RootStackParamList = {
   Projects: undefined;
   CreateProject: undefined;
   ProjectDetail: { projectId: string };
-  DataRecording: { projectId: string; tableName?: string };
   DataLogs: { projectId: string };
   DatabaseSchema: { projectId: string };
   DataSchemaConfig: { projectId: string };

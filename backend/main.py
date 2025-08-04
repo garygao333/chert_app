@@ -145,17 +145,28 @@ async def create_data_record(project_id: str, record: DataRecordCreate):
 # Voice Processing Endpoints
 @app.post("/voice/process", response_model=VoiceProcessingResponse)
 async def process_voice_input(
-    audio_file: UploadFile = File(...),
-    project_id: str = Form(...),
-    context: Optional[str] = Form(None)
+    audio_file: UploadFile = File(..., description="Audio file to process"),
+    project_id: str = Form(..., description="Project ID"),
+    context: Optional[str] = Form(None, description="Optional context")
 ):
     """Process voice input using the LangGraph agent"""
     try:
+        # Validate audio file
+        if not audio_file:
+            raise HTTPException(status_code=422, detail="Audio file is required")
+        
+        if not audio_file.filename:
+            raise HTTPException(status_code=422, detail="Audio file must have a filename")
+            
+        # Validate project_id
+        if not project_id or not project_id.strip():
+            raise HTTPException(status_code=422, detail="Project ID is required and cannot be empty")
+        
         # Save uploaded audio file temporarily with correct extension
         import tempfile
         
         # Get file extension from the uploaded file
-        original_filename = audio_file.filename or "audio.wav"
+        original_filename = audio_file.filename
         file_extension = os.path.splitext(original_filename)[1] or ".wav"
         
         # Ensure the extension is supported by OpenAI
@@ -169,15 +180,22 @@ async def process_voice_input(
         
         logger.info(f"Saving audio file as: {temp_filename} (original: {original_filename})")
         
+        # Read and validate file content
+        content = await audio_file.read()
+        if len(content) == 0:
+            raise HTTPException(status_code=422, detail="Audio file is empty")
+        
+        if len(content) > 25 * 1024 * 1024:  # 25MB limit for OpenAI Whisper
+            raise HTTPException(status_code=422, detail="Audio file is too large (max 25MB)")
+        
         with open(temp_path, "wb") as buffer:
-            content = await audio_file.read()
             buffer.write(content)
         
         logger.info(f"Audio file saved: {temp_path}, size: {len(content)} bytes")
         
         # Process with voice agent
         result = await voice_agent.process_voice_input(
-            project_id=project_id,
+            project_id=project_id.strip(),
             audio_file_path=temp_path,
             context=context
         )
@@ -189,9 +207,12 @@ async def process_voice_input(
             pass  # File might already be removed
         
         return result
+    except HTTPException:
+        # Re-raise HTTP exceptions (like validation errors)
+        raise
     except Exception as e:
         logger.error(f"Error processing voice input: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.post("/text/process", response_model=VoiceProcessingResponse)
 async def process_text_input(
@@ -213,14 +234,21 @@ async def process_text_input(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/voice/transcribe")
-async def transcribe_audio(audio_file: UploadFile = File(...)):
+async def transcribe_audio(audio_file: UploadFile = File(..., description="Audio file to transcribe")):
     """Transcribe audio to text"""
     try:
+        # Validate audio file
+        if not audio_file:
+            raise HTTPException(status_code=422, detail="Audio file is required")
+        
+        if not audio_file.filename:
+            raise HTTPException(status_code=422, detail="Audio file must have a filename")
+        
         # Save uploaded audio file temporarily with correct extension
         import tempfile
         
         # Get file extension from the uploaded file
-        original_filename = audio_file.filename or "audio.wav"
+        original_filename = audio_file.filename
         file_extension = os.path.splitext(original_filename)[1] or ".wav"
         
         # Ensure the extension is supported by OpenAI
@@ -234,8 +262,15 @@ async def transcribe_audio(audio_file: UploadFile = File(...)):
         
         logger.info(f"Saving audio file for transcription as: {temp_filename}")
         
+        # Read and validate file content
+        content = await audio_file.read()
+        if len(content) == 0:
+            raise HTTPException(status_code=422, detail="Audio file is empty")
+        
+        if len(content) > 25 * 1024 * 1024:  # 25MB limit for OpenAI Whisper
+            raise HTTPException(status_code=422, detail="Audio file is too large (max 25MB)")
+        
         with open(temp_path, "wb") as buffer:
-            content = await audio_file.read()
             buffer.write(content)
         
         # Transcribe with OpenAI Whisper
@@ -248,9 +283,12 @@ async def transcribe_audio(audio_file: UploadFile = File(...)):
             pass  # File might already be removed
         
         return {"transcription": transcription}
+    except HTTPException:
+        # Re-raise HTTP exceptions (like validation errors)
+        raise
     except Exception as e:
         logger.error(f"Error transcribing audio: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # Image Processing Endpoints
 @app.post("/image/process")

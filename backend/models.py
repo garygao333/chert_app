@@ -92,56 +92,21 @@ class DataRecordResponse(DataRecordBase):
     created_at: datetime
     updated_at: datetime
 
-# Voice Processing Models
+# Voice Processing Models (used for multipart form endpoints)
 class VoiceProcessingRequest(BaseModel):
+    audio_file_path: str
     project_id: str
     context: Optional[str] = None
 
 class VoiceProcessingResponse(BaseModel):
     transcription: str
-    intent: Dict[str, Any]
-    plan: Dict[str, Any]
     extracted_data: Dict[str, Any]
     confidence: float
     suggested_fields: List[str]
-    detections: Optional[List[Detection]] = None
-    commit_id: Optional[str] = None
     reasoning: str
-
-# Schema Models
-class ColumnSchema(BaseModel):
-    name: str
-    type: str
-    required: bool
-    description: Optional[str] = None
-
-class TableSchema(BaseModel):
-    name: str
-    columns: List[ColumnSchema]
-
-class DatabaseSchema(BaseModel):
-    tables: List[TableSchema]
-    relationships: Optional[List[Dict[str, Any]]] = None
-
-# Activity Models
-class ActivityLog(BaseModel):
-    id: str
-    type: ActivityType
-    description: str
-    project_id: str
-    project_name: str
-    timestamp: datetime
-    metadata: Optional[Dict[str, Any]] = None
-
-# Audit Models
-class AuditRecord(BaseModel):
-    id: str
-    timestamp: datetime
-    project_id: str
-    rows: List[str]  # List of row IDs affected
-    diff: Dict[str, Any]  # The changes made
-    user_id: Optional[str] = None
-    reasoning: Optional[str] = None
+    commit_id: Optional[str] = None
+    workflow_plan: Optional[Dict[str, Any]] = None
+    tool_events: Optional[List[Dict[str, Any]]] = None
 
 # LangGraph State Models
 class AgentState(BaseModel):
@@ -178,22 +143,6 @@ class ImageProcessingResponse(BaseModel):
     extracted_data: Dict[str, Any]
     confidence: float
     detections: List[Detection]
-
-# Voice Processing Models
-class VoiceProcessingRequest(BaseModel):
-    audio_file_path: str
-    project_id: str
-    context: Optional[str] = None
-
-class VoiceProcessingResponse(BaseModel):
-    transcription: str
-    extracted_data: Dict[str, Any]
-    confidence: float
-    suggested_fields: List[str]
-    reasoning: str
-    commit_id: Optional[str] = None
-    workflow_plan: Optional[Dict[str, Any]] = None
-    tool_events: Optional[List[Dict[str, Any]]] = None
 
 # Schema Analysis Models
 class ColumnSchema(BaseModel):

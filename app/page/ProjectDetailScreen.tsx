@@ -14,7 +14,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList, RecentActivity, Project } from '../types/index.js';
-import { SupabaseService } from '../services/supabaseService';
+import FirebaseService from '../services/firebaseService';
 
 type ProjectDetailNavigationProp = StackNavigationProp<RootStackParamList>;
 type ProjectDetailRouteProp = RouteProp<RootStackParamList, 'ProjectDetail'>;
@@ -60,9 +60,9 @@ export default function ProjectDetailScreen() {
       
       // Load project data in parallel
       const [projectData, statsData, activityData] = await Promise.all([
-        SupabaseService.getProject(projectId),
-        SupabaseService.getProjectStats(projectId),
-        SupabaseService.getRecentActivity(5, projectId)
+        FirebaseService.getProject(projectId),
+        FirebaseService.getProjectStats(projectId),
+        FirebaseService.getRecentActivity(5, projectId)
       ]);
 
       setProject(projectData);

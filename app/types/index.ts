@@ -15,6 +15,8 @@ export interface Project {
     sampleRows: string[];
   };
   dataColumns?: string[];
+  generalAnnotations?: string;
+  columnAnnotations?: Record<string, string>;
   // Legacy fields for backward compatibility
   documentation?: string;
   databaseType?: string;

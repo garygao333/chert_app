@@ -15,8 +15,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import type { MainTabParamList, RootStackParamList, RecentActivity, Project } from '../types/index';
-import { SupabaseService } from '../services/supabaseService';
-import { testSupabaseConnection } from '../services/testSupabase';
+import FirebaseService from '../services/firebaseService';
 
 type DashboardNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Projects'>,
@@ -33,11 +32,8 @@ export default function DashboardScreen() {
       setLoading(true);
       
       // Test connection first (for debugging)
-      console.log('🔍 Testing Supabase connection...');
-      await testSupabaseConnection();
-      
       // Load projects data
-      const projectsData = await SupabaseService.getProjects();
+      const projectsData = await FirebaseService.getProjects();
       setProjects(projectsData);
       
       console.log('📊 Dashboard data loaded:', {

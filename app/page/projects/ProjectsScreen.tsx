@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList, Project } from '../../types/index.js';
-import { SupabaseService } from '../../services/supabaseService';
+import FirebaseService from '../../services/firebaseService';
 
 type ProjectsNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -26,7 +26,7 @@ export default function ProjectsScreen() {
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const projectsData = await SupabaseService.getProjects();
+      const projectsData = await FirebaseService.getProjects();
       setProjects(projectsData);
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -51,17 +51,33 @@ export default function ProjectsScreen() {
     project.description.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const getDatabaseIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'postgresql':
-        return 'server';
-      case 'mysql':
-        return 'database';
-      case 'filemaker':
-        return 'document-text';
-      default:
-        return 'server-outline';
+  const getDatabaseIcon = (project: Project) => {
+    if (project.csvContent || project.csvMetadata) {
+      return 'document-text';
     }
+    if (project.databaseType) {
+      switch (project.databaseType.toLowerCase()) {
+        case 'postgresql':
+          return 'server';
+        case 'mysql':
+          return 'database';
+        case 'filemaker':
+          return 'document-text';
+        default:
+          return 'server-outline';
+      }
+    }
+    return 'folder-outline';
+  };
+
+  const getProjectBadgeText = (project: Project) => {
+    if (project.csvMetadata) {
+      return 'CSV Data';
+    }
+    if (project.databaseType) {
+      return project.databaseType;
+    }
+    return 'Project';
   };
 
   const formatDate = (date: Date) => {
@@ -120,26 +136,65 @@ export default function ProjectsScreen() {
                 </View>
                 <View style={styles.databaseBadge}>
                   <Ionicons 
-                    name={getDatabaseIcon(project.databaseType) as any} 
+                    name={getDatabaseIcon(project) as any} 
                     size={14} 
                     color="#EF9144" 
                   />
-                  <Text style={styles.databaseText}>{project.databaseType}</Text>
+                  <Text style={styles.databaseText}>{getProjectBadgeText(project)}</Text>
                 </View>
               </View>
+
+              {/* Data columns display */}
+              {project.dataColumns && project.dataColumns.length > 0 && (
+                <View style={styles.dataColumnsContainer}>
+                  <Text style={styles.dataColumnsTitle}>Data columns ({project.dataColumns.length}):</Text>
+                  <View style={styles.dataColumnsWrapper}>
+                    {project.dataColumns.slice(0, 4).map((column, idx) => (
+                      <View key={idx} style={styles.columnTag}>
+                        <Text style={styles.columnText}>{column}</Text>
+                      </View>
+                    ))}
+                    {project.dataColumns.length > 4 && (
+                      <Text style={styles.moreColumnsText}>+{project.dataColumns.length - 4} more</Text>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* CSV metadata display */}
+              {project.csvMetadata && (
+                <View style={styles.csvMetadataContainer}>
+                  <Text style={styles.csvFileName}>📄 {project.csvMetadata.fileName}</Text>
+                  <Text style={styles.csvInfo}>
+                    {project.csvMetadata.totalRows} rows • {(project.csvMetadata.fileSize / 1024).toFixed(1)} KB
+                  </Text>
+                  {project.csvMetadata.sampleRows && project.csvMetadata.sampleRows.length > 0 && (
+                    <View style={styles.sampleRowsContainer}>
+                      <Text style={styles.sampleRowsTitle}>Sample data:</Text>
+                      {project.csvMetadata.sampleRows.slice(0, 2).map((row, idx) => (
+                        <Text key={idx} style={styles.sampleRowText} numberOfLines={1}>
+                          {row}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
               
               <View style={styles.projectFooter}>
                 <Text style={styles.projectDate}>
-                  Updated {formatDate(project.updatedAt)}
+                  {project.updatedAt ? `Updated ${formatDate(project.updatedAt)}` : `Created ${formatDate(project.createdAt)}`}
                 </Text>
                 <View style={styles.projectActions}>
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => navigation.navigate('DataRecording', { projectId: project.id })}
-                  >
-                    <Ionicons name="mic" size={14} color="#4CAF50" />
-                    <Text style={styles.actionText}>Record</Text>
-                  </TouchableOpacity>
+                  {project.dataColumns && project.dataColumns.length > 0 && (
+                    <TouchableOpacity 
+                      style={styles.actionButton}
+                      onPress={() => navigation.navigate('DataRecording', { projectId: project.id })}
+                    >
+                      <Ionicons name="mic" size={14} color="#4CAF50" />
+                      <Text style={styles.actionText}>Record</Text>
+                    </TouchableOpacity>
+                  )}
                   <Ionicons name="chevron-forward" size={18} color="#ccc" />
                 </View>
               </View>
@@ -334,6 +389,74 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 5,
     textAlign: 'center',
+  },
+  dataColumnsContainer: {
+    marginBottom: 12,
+    paddingTop: 8,
+  },
+  dataColumnsTitle: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 6,
+    fontWeight: '500',
+  },
+  dataColumnsWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    alignItems: 'center',
+  },
+  columnTag: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  columnText: {
+    fontSize: 11,
+    color: '#555',
+    fontWeight: '500',
+  },
+  moreColumnsText: {
+    fontSize: 11,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  csvMetadataContainer: {
+    backgroundColor: 'rgba(33, 150, 243, 0.05)',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(33, 150, 243, 0.1)',
+  },
+  csvFileName: {
+    fontSize: 13,
+    color: '#1976D2',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  csvInfo: {
+    fontSize: 12,
+    color: '#1565C0',
+    marginBottom: 8,
+  },
+  sampleRowsContainer: {
+    marginTop: 4,
+  },
+  sampleRowsTitle: {
+    fontSize: 11,
+    color: '#1565C0',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  sampleRowText: {
+    fontSize: 10,
+    color: '#424242',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    padding: 4,
+    borderRadius: 4,
+    marginBottom: 2,
   },
   fab: {
     position: 'absolute',

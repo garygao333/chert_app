@@ -4,11 +4,21 @@ export interface Project {
   id: string;
   name: string;
   description: string;
-  documentation: string;
-  databaseType: string;
-  connectionString: string;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;
+  userId: string;
+  csvContent?: string;
+  csvMetadata?: {
+    fileName: string;
+    fileSize: number;
+    totalRows: number;
+    sampleRows: string[];
+  };
+  dataColumns?: string[];
+  // Legacy fields for backward compatibility
+  documentation?: string;
+  databaseType?: string;
+  connectionString?: string;
   schema?: DatabaseSchema;
 }
 

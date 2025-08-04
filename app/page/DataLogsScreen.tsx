@@ -15,8 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList, DataRecord } from '../../types/index.js';
-import { SupabaseService } from '../../services/supabaseService';
+import type { RootStackParamList, DataRecord } from '../types/index.js';
+import { SupabaseService } from '../services/supabaseService';
 
 type DataLogsNavigationProp = StackNavigationProp<RootStackParamList>;
 type DataLogsRouteProp = RouteProp<RootStackParamList, 'DataLogs'>;

@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList, Project } from '../../types/index.js';
-import { SupabaseService } from '../../services/supabaseService.js';
+import { SupabaseService } from '../../services/supabaseService';
 
 type ProjectsNavigationProp = StackNavigationProp<RootStackParamList>;
 

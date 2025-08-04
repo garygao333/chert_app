@@ -164,16 +164,14 @@ export default function EnhancedProjectDetailScreen() {
 
     try {
       for (const row of localTableData) {
-        const recordData = {
-          ...row,
-          timestamp: undefined, // Remove timestamp from data
-        };
+        // Remove local-only fields that shouldn't be stored in Firebase
+        const { timestamp, method, source, ...recordData } = row;
         
         await FirebaseService.createDataRecord(
           project.id,
           recordData,
-          row.method || 'chat',
-          row.source || ''
+          method || 'chat',
+          source || ''
         );
       }
       

@@ -15,6 +15,7 @@ import EnhancedProjectDetailScreen from '../page/projects/EnhancedProjectDetailS
 import DataLogsScreen from '../page/database/DataLogsScreen';
 import DatabaseSchemaScreen from '../page/database/DatabaseSchemaScreen';
 import DataSchemaConfigScreen from '../page/database/DataSchemaConfigScreen';
+import DataRecordingScreen from '../page/database/DataRecordingScreen';
 import Login from '../page/auth/Login';
 import Signup from '../page/auth/Signup';
 import AccountScreen from '../page/settings/AccountScreen';
@@ -118,7 +119,7 @@ export default function AppNavigator() {
           <Stack.Screen 
             name="ProjectDetail" 
             component={EnhancedProjectDetailScreen}
-            options={{ title: 'Project Details' }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen 
             name="DataLogs" 
@@ -134,6 +135,11 @@ export default function AppNavigator() {
             name="DataSchemaConfig" 
             component={DataSchemaConfigScreen}
             options={{ title: 'Configure Schema' }}
+          />
+          <Stack.Screen 
+            name="DataRecording" 
+            component={DataRecordingScreen}
+            options={{ headerShown: false }}
           />
           <Stack.Screen 
             name="Account" 

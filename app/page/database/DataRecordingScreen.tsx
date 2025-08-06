@@ -506,59 +506,76 @@ export default function DataRecordingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <LinearGradient
-        colors={['rgba(239, 145, 68, 0.9)', 'rgba(254, 126, 66, 0.7)']}
-        style={styles.header}
-      >
-        <Text style={styles.title}>Record Data</Text>
-        <Text style={styles.subtitle}>Speak naturally or type your observations</Text>
-      </LinearGradient>
-
-      {/* Conversation */}
-      <ScrollView style={styles.conversation} showsVerticalScrollIndicator={false}>
-        {conversation.map((message) => (
-          <View
-            key={message.id}
-            style={[
-              styles.messageContainer,
-              message.type === 'user' ? styles.userMessage : styles.assistantMessage
-            ]}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
           >
-            <Text style={[
-              styles.messageText,
-              message.type === 'user' ? styles.userMessageText : styles.assistantMessageText
-            ]}>
-              {message.content}
-            </Text>
-            {message.metadata?.confidence && (
-              <View style={styles.confidenceContainer}>
-                <Text style={styles.confidenceText}>
-                  Confidence: {Math.round(message.metadata.confidence * 100)}%
-                </Text>
-                <View style={[
-                  styles.confidenceBar,
-                  { backgroundColor: getConfidenceColor(message.metadata.confidence) }
-                ]} />
+            <Ionicons name="chevron-back" size={24} color="#1a1a1a" />
+          </TouchableOpacity>
+          <View style={styles.projectHeader}>
+            <View style={[styles.projectIcon, { backgroundColor: '#EF9144' }]}>
+              <Ionicons name="library-outline" size={16} color="white" />
+            </View>
+            <View>
+              <Text style={styles.title}>All Databases</Text>
+              <View style={styles.dropdown}>
+                <Ionicons name="chevron-down" size={16} color="#666" />
               </View>
-            )}
+            </View>
           </View>
-        ))}
-      </ScrollView>
-
-      {/* Current Record Summary */}
-      {currentRecord.length > 0 && (
-        <View style={styles.currentRecord}>
-          <Text style={styles.currentRecordTitle}>Current Record ({currentRecord.length} fields)</Text>
-          {currentRecord.slice(0, 3).map((field, index) => (
-            <Text key={index} style={styles.currentRecordField}>
-              {field.name}: {field.value} ({Math.round(field.confidence * 100)}%)
-            </Text>
-          ))}
-          {currentRecord.length > 3 && (
-            <Text style={styles.currentRecordMore}>+{currentRecord.length - 3} more fields</Text>
-          )}
         </View>
-      )}
+      </View>
+
+      {/* Chat Area */}
+      <View style={styles.chatArea}>
+        <ScrollView style={styles.conversation} showsVerticalScrollIndicator={false} contentContainerStyle={styles.conversationContent}>
+          {/* Initial System Message */}
+          <View style={styles.systemMessage}>
+            <Text style={styles.systemMessageText}>
+              Hello! I can help you analyze your data. What would you like to know?
+            </Text>
+            <Text style={styles.systemMessageTime}>10:43 PM</Text>
+          </View>
+
+          {conversation.map((message) => (
+            <View
+              key={message.id}
+              style={[
+                styles.messageContainer,
+                message.type === 'user' ? styles.userMessage : styles.assistantMessage
+              ]}
+            >
+              <Text style={[
+                styles.messageText,
+                message.type === 'user' ? styles.userMessageText : styles.assistantMessageText
+              ]}>
+                {message.content}
+              </Text>
+              {message.metadata?.confidence && (
+                <View style={styles.confidenceContainer}>
+                  <Text style={styles.confidenceText}>
+                    Confidence: {Math.round(message.metadata.confidence * 100)}%
+                  </Text>
+                  <View style={[
+                    styles.confidenceBar,
+                    { backgroundColor: getConfidenceColor(message.metadata.confidence) }
+                  ]} />
+                </View>
+              )}
+            </View>
+          ))}
+          
+          {isProcessing && (
+            <View style={[styles.messageContainer, styles.assistantMessage]}>
+              <Text style={styles.assistantMessageText}>
+                Processing your input...
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
 
       {/* Input Area */}
       <View style={styles.inputContainer}>
@@ -567,7 +584,7 @@ export default function DataRecordingScreen() {
             style={styles.textInput}
             value={textInput}
             onChangeText={setTextInput}
-            placeholder="Type your observations..."
+            placeholder="Ask about your data..."
             multiline
             maxLength={500}
           />
@@ -580,52 +597,43 @@ export default function DataRecordingScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton} onPress={addPhoto}>
-            <Ionicons name="camera" size={20} color="#666" />
-            <Text style={styles.actionButtonText}>Photo</Text>
+        {/* Bottom Action Buttons */}
+        <View style={styles.bottomActions}>
+          <TouchableOpacity style={styles.bottomActionButton} onPress={addPhoto}>
+            <Ionicons name="camera" size={20} color="#4FC3F7" />
+            <Text style={styles.bottomActionText}>Photo</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionButton} onPress={getGPSLocation} disabled={isProcessing}>
-            <Ionicons name="location" size={20} color="#666" />
-            <Text style={styles.actionButtonText}>GPS</Text>
+          <TouchableOpacity style={styles.bottomActionButton} onPress={() => {}}>
+            <Ionicons name="flask" size={20} color="#FF9800" />
+            <Text style={styles.bottomActionText}>Test AI</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity
-            style={[styles.actionButton, currentRecord.length > 0 && styles.actionButtonActive]}
-            onPress={commitRecord}
-            disabled={currentRecord.length === 0}
-          >
-            <Ionicons name="save" size={20} color={currentRecord.length > 0 ? "#fff" : "#666"} />
-            <Text style={[styles.actionButtonText, currentRecord.length > 0 && styles.actionButtonActiveText]}>
-              Commit
-            </Text>
+          {/* Central Record Button */}
+          <View style={styles.centralRecordContainer}>
+            <Animated.View style={[styles.centralRecordButton, { transform: [{ scale: scaleAnim }] }]}>
+              <TouchableOpacity
+                style={[
+                  styles.recordButton,
+                  isRecording && styles.recordingButtonActive,
+                  isProcessing && styles.processingButton
+                ]}
+                onPress={isRecording ? stopRecording : startRecording}
+                disabled={isProcessing}
+              >
+                <Ionicons
+                  name={isProcessing ? "cog" : isRecording ? "stop" : "mic"}
+                  size={24}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+          
+          <TouchableOpacity style={styles.bottomActionButton} onPress={getGPSLocation} disabled={isProcessing}>
+            <Ionicons name="location" size={20} color="#4CAF50" />
+            <Text style={styles.bottomActionText}>GPS</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Recording Button */}
-        <View style={styles.recordingContainer}>
-          <Animated.View style={[styles.recordingButton, { transform: [{ scale: scaleAnim }] }]}>
-            <TouchableOpacity
-              style={[
-                styles.recordButton,
-                isRecording && styles.recordingButtonActive,
-                isProcessing && styles.processingButton
-              ]}
-              onPress={isRecording ? stopRecording : startRecording}
-              disabled={isProcessing}
-            >
-              <Ionicons
-                name={isProcessing ? "cog" : isRecording ? "stop" : "mic"}
-                size={32}
-                color="#fff"
-              />
-            </TouchableOpacity>
-          </Animated.View>
-          <Text style={styles.recordingText}>
-            {isProcessing ? 'Processing...' : isRecording ? 'Recording...' : 'Tap to record'}
-          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -635,53 +643,105 @@ export default function DataRecordingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8F9FA',
   },
   header: {
-    paddingTop: 20,
+    backgroundColor: 'white',
+    paddingTop: 10,
     paddingBottom: 15,
     paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: 12,
+    padding: 4,
+  },
+  projectHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  projectIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 2,
   },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
+  dropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginRight: 4,
+  },
+  chatArea: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
   },
   conversation: {
     flex: 1,
-    paddingHorizontal: 15,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+  },
+  conversationContent: {
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  systemMessage: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  systemMessageText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  systemMessageTime: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
   messageContainer: {
     maxWidth: '80%',
-    marginVertical: 4,
-    padding: 12,
-    borderRadius: 16,
+    marginVertical: 6,
+    padding: 16,
+    borderRadius: 20,
   },
   userMessage: {
     alignSelf: 'flex-end',
     backgroundColor: '#007AFF',
+    borderBottomRightRadius: 4,
   },
   assistantMessage: {
     alignSelf: 'flex-start',
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#E5E7EB',
+    borderBottomLeftRadius: 4,
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   userMessageText: {
     color: '#fff',
   },
   assistantMessageText: {
-    color: '#333',
+    color: '#1F2937',
   },
   confidenceContainer: {
     marginTop: 8,
@@ -725,81 +785,80 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#E5E7EB',
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   textInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    maxHeight: 80,
-    marginRight: 8,
+    borderColor: '#E5E7EB',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    maxHeight: 100,
+    marginRight: 12,
+    fontSize: 16,
+    backgroundColor: '#F9FAFB',
   },
   sendButton: {
-    backgroundColor: '#007AFF',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    backgroundColor: '#EF9144',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 15,
-  },
-  actionButton: {
+  bottomActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
-  actionButtonActive: {
-    backgroundColor: '#4CAF50',
+  bottomActionButton: {
+    alignItems: 'center',
+    padding: 8,
   },
-  actionButtonText: {
-    marginLeft: 5,
-    fontSize: 14,
-    color: '#666',
+  bottomActionText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    fontWeight: '500',
   },
-  actionButtonActiveText: {
-    color: '#fff',
-  },
-  recordingContainer: {
+  centralRecordContainer: {
     alignItems: 'center',
   },
-  recordingButton: {
-    marginBottom: 8,
+  centralRecordButton: {
+    marginBottom: 4,
   },
   recordButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#007AFF',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#4CAF50',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   recordingButtonActive: {
     backgroundColor: '#F44336',
+    shadowColor: '#F44336',
   },
   processingButton: {
     backgroundColor: '#FF9800',
-  },
-  recordingText: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
+    shadowColor: '#FF9800',
   },
 });

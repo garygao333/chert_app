@@ -88,24 +88,59 @@ export default function ProjectsScreen() {
     });
   };
 
+  const getTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+    return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''}`;
+  };
+
+  const getProjectColor = (project: Project) => {
+    const colors = ['#EF9144', '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B'];
+    const index = project.name.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
+
+  const getProgressColors = (project: Project): [string, string] => {
+    const baseColor = getProjectColor(project);
+    return [baseColor, baseColor + '80'];
+  };
+
+  const getProgressWidth = (project: Project) => {
+    const entries = project.csvMetadata?.totalRows || project.dataColumns?.length || 0;
+    const maxEntries = 100; // Arbitrary max for progress calculation
+    const progress = Math.min(entries / maxEntries, 1);
+    return `${progress * 100}%` as any; // Cast to satisfy React Native's DimensionValue type
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['rgba(239, 145, 68, 0.9)', 'rgba(254, 126, 66, 0.7)']}
-        style={styles.header}
-      >
-        <Text style={styles.title}>Projects</Text>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search projects..."
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholderTextColor="#666"
-          />
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <View style={styles.logoContainer}>
+              <Ionicons name="library-outline" size={24} color="#EF9144" />
+            </View>
+            <Text style={styles.title}>Projects</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.searchButton}>
+              <Ionicons name="search" size={20} color="#666" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => navigation.navigate('CreateProject')}
+            >
+              <Ionicons name="add" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
@@ -134,89 +169,59 @@ export default function ProjectsScreen() {
                     {project.description}
                   </Text>
                 </View>
-                <View style={styles.databaseBadge}>
+                <View style={[styles.databaseBadge, { backgroundColor: getProjectColor(project) }]}>
                   <Ionicons 
                     name={getDatabaseIcon(project) as any} 
-                    size={14} 
-                    color="#EF9144" 
+                    size={16} 
+                    color="white" 
                   />
-                  <Text style={styles.databaseText}>{getProjectBadgeText(project)}</Text>
                 </View>
               </View>
 
-              {/* Data columns display */}
-              {project.dataColumns && project.dataColumns.length > 0 && (
-                <View style={styles.dataColumnsContainer}>
-                  <Text style={styles.dataColumnsTitle}>Data columns ({project.dataColumns.length}):</Text>
-                  <View style={styles.dataColumnsWrapper}>
-                    {project.dataColumns.slice(0, 4).map((column, idx) => (
-                      <View key={idx} style={styles.columnTag}>
-                        <Text style={styles.columnText}>{column}</Text>
-                      </View>
-                    ))}
-                    {project.dataColumns.length > 4 && (
-                      <Text style={styles.moreColumnsText}>+{project.dataColumns.length - 4} more</Text>
-                    )}
-                  </View>
-                </View>
-              )}
-
-              {/* CSV metadata display */}
-              {project.csvMetadata && (
-                <View style={styles.csvMetadataContainer}>
-                  <Text style={styles.csvFileName}>📄 {project.csvMetadata.fileName}</Text>
-                  <Text style={styles.csvInfo}>
-                    {project.csvMetadata.totalRows} rows • {(project.csvMetadata.fileSize / 1024).toFixed(1)} KB
+              {/* Project Stats */}
+              <View style={styles.projectFooter}>
+                <View style={styles.projectStats}>
+                  <Ionicons name="time-outline" size={12} color="#9CA3AF" />
+                  <Text style={styles.projectDate}>
+                    {project.updatedAt ? `${getTimeAgo(project.updatedAt)} ago` : `${getTimeAgo(project.createdAt)} ago`}
                   </Text>
-                  {project.csvMetadata.sampleRows && project.csvMetadata.sampleRows.length > 0 && (
-                    <View style={styles.sampleRowsContainer}>
-                      <Text style={styles.sampleRowsTitle}>Sample data:</Text>
-                      {project.csvMetadata.sampleRows.slice(0, 2).map((row, idx) => (
-                        <Text key={idx} style={styles.sampleRowText} numberOfLines={1}>
-                          {row}
-                        </Text>
-                      ))}
+                  <Text style={styles.projectEntries}>
+                    {project.csvMetadata?.totalRows || project.dataColumns?.length || 0} entries
+                  </Text>
+                </View>
+              </View>
+
+              {/* Tags */}
+              {project.dataColumns && project.dataColumns.length > 0 && (
+                <View style={styles.tagContainer}>
+                  {project.dataColumns.slice(0, 3).map((column, idx) => (
+                    <View key={idx} style={styles.tag}>
+                      <Text style={styles.tagText}>{column}</Text>
+                    </View>
+                  ))}
+                  {project.dataColumns.length > 3 && (
+                    <View style={styles.tag}>
+                      <Text style={styles.tagText}>+{project.dataColumns.length - 3}</Text>
                     </View>
                   )}
                 </View>
               )}
-              
-              <View style={styles.projectFooter}>
-                <Text style={styles.projectDate}>
-                  {project.updatedAt ? `Updated ${formatDate(project.updatedAt)}` : `Created ${formatDate(project.createdAt)}`}
-                </Text>
-                <View style={styles.projectActions}>
-                  {project.dataColumns && project.dataColumns.length > 0 && (
-                    <TouchableOpacity 
-                      style={styles.actionButton}
-                      onPress={() => navigation.navigate('ProjectDetail', { projectId: project.id })}
-                    >
-                      <Ionicons name="mic" size={14} color="#4CAF50" />
-                      <Text style={styles.actionText}>Record</Text>
-                    </TouchableOpacity>
-                  )}
-                  <Ionicons name="chevron-forward" size={18} color="#ccc" />
-                </View>
+
+              {/* Progress Bar */}
+              <View style={styles.progressBar}>
+                <LinearGradient
+                  colors={getProgressColors(project)}
+                  style={[styles.progressFill, { width: getProgressWidth(project) }]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
               </View>
             </TouchableOpacity>
           ))
         )}
         
-        <View style={{ height: 100 }} />
+        <View style={{ height: 20 }} />
       </ScrollView>
-
-      {/* Floating Action Button */}
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={() => navigation.navigate('CreateProject')}
-      >
-        <LinearGradient
-          colors={['#EF9144', '#FE7E42']}
-          style={styles.fabGradient}
-        >
-          <Ionicons name="add" size={28} color="white" />
-        </LinearGradient>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -227,128 +232,147 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 248, 243, 0.95)', // Peach-white gradient base
   },
   header: {
-    paddingTop: 20,
-    paddingBottom: 20,
+    backgroundColor: 'white',
+    paddingTop: 10,
+    paddingBottom: 15,
     paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 15,
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  searchContainer: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
   },
-  searchIcon: {
-    marginRight: 10,
+  logoContainer: {
+    marginRight: 12,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  searchButton: {
+    padding: 8,
+  },
+  addButton: {
+    padding: 8,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 15,
   },
   projectCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    marginHorizontal: 2,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 1,
     },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.04)',
   },
   projectHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   projectInfo: {
     flex: 1,
     marginRight: 12,
   },
   projectName: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#1a1a1a',
-    marginBottom: 6,
-    letterSpacing: -0.3,
-  },
-  projectDescription: {
-    fontSize: 15,
-    color: '#666',
-    lineHeight: 22,
     marginBottom: 4,
   },
+  projectDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
   databaseBadge: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(239, 145, 68, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 145, 68, 0.2)',
   },
   databaseText: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#EF9144',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontWeight: '500',
+    marginTop: 2,
   },
   projectFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.06)',
+    marginTop: 8,
+  },
+  projectStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   projectDate: {
-    fontSize: 13,
-    color: '#999',
+    fontSize: 12,
+    color: '#9CA3AF',
     fontWeight: '500',
   },
-  projectActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  projectEntries: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    marginLeft: 8,
   },
-  actionButton: {
+  tagContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(76, 175, 80, 0.2)',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
   },
-  actionText: {
-    fontSize: 13,
-    color: '#4CAF50',
-    fontWeight: '600',
+  tag: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  tagText: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  progressBar: {
+    height: 3,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 2,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
   },
   loadingContainer: {
     flex: 1,
@@ -363,20 +387,20 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     backgroundColor: 'white',
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 40,
     alignItems: 'center',
     marginVertical: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 1,
     },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.04)',
   },
   emptyStateText: {
     fontSize: 16,
@@ -389,96 +413,5 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 5,
     textAlign: 'center',
-  },
-  dataColumnsContainer: {
-    marginBottom: 12,
-    paddingTop: 8,
-  },
-  dataColumnsTitle: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 6,
-    fontWeight: '500',
-  },
-  dataColumnsWrapper: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    alignItems: 'center',
-  },
-  columnTag: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  columnText: {
-    fontSize: 11,
-    color: '#555',
-    fontWeight: '500',
-  },
-  moreColumnsText: {
-    fontSize: 11,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-  csvMetadataContainer: {
-    backgroundColor: 'rgba(33, 150, 243, 0.05)',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(33, 150, 243, 0.1)',
-  },
-  csvFileName: {
-    fontSize: 13,
-    color: '#1976D2',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  csvInfo: {
-    fontSize: 12,
-    color: '#1565C0',
-    marginBottom: 8,
-  },
-  sampleRowsContainer: {
-    marginTop: 4,
-  },
-  sampleRowsTitle: {
-    fontSize: 11,
-    color: '#1565C0',
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  sampleRowText: {
-    fontSize: 10,
-    color: '#424242',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    padding: 4,
-    borderRadius: 4,
-    marginBottom: 2,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  fabGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

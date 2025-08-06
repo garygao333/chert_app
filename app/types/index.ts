@@ -109,6 +109,7 @@ export type RootStackParamList = {
   DataLogs: { projectId: string };
   DatabaseSchema: { projectId: string };
   DataSchemaConfig: { projectId: string };
+  DataRecording: { projectId: string; tableName?: string };
   Account: undefined;
 };
 

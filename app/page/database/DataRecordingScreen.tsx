@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
+  Image,
   Animated,
   Alert,
 } from 'react-native';
@@ -18,6 +19,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
 import type { StackNavigationProp } from '@react-navigation/stack';
+import type { Project } from '../../types';
+import FirebaseService from '../../services/firebaseService';
 import type { RootStackParamList, RecordMetadata } from '../../types';
 import { ApiService } from '../../services/api';
 
@@ -64,6 +67,22 @@ export default function DataRecordingScreen() {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const { projectId, tableName } = route.params;
+  const [project, setProject] = useState<Project | null>(null);
+
+  // Load project details
+  useEffect(() => {
+    const loadProject = async () => {
+      if (projectId) {
+        try {
+          const projectData = await FirebaseService.getProject(projectId);
+          setProject(projectData);
+        } catch (error) {
+          console.error('Error loading project:', error);
+        }
+      }
+    };
+    loadProject();
+  }, [projectId]);
 
   // Initialize audio permissions and test backend connection
   useEffect(() => {
@@ -508,23 +527,33 @@ export default function DataRecordingScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#1a1a1a" />
-          </TouchableOpacity>
-          <View style={styles.projectHeader}>
-            <View style={[styles.projectIcon, { backgroundColor: '#EF9144' }]}>
-              <Ionicons name="library-outline" size={16} color="white" />
-            </View>
-            <View>
-              <Text style={styles.title}>All Databases</Text>
-              <View style={styles.dropdown}>
-                <Ionicons name="chevron-down" size={16} color="#666" />
-              </View>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="chevron-back" size={24} color="#1a1a1a" />
+            </TouchableOpacity>
+            <View style={styles.logoContainer}>
+              <Image 
+                source={require('../../assets/logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
             </View>
           </View>
+          
+          <TouchableOpacity style={styles.projectSelector} onPress={() => {}}>
+            <View style={styles.projectInfo}>
+              <Text style={styles.projectName} numberOfLines={1}>
+                {project?.name || 'Select Project'}
+              </Text>
+              <Text style={styles.projectType} numberOfLines={1}>
+                {project?.databaseType || 'No project selected'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={20} color="#666" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -643,10 +672,57 @@ export default function DataRecordingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: 'rgba(255, 248, 243, 0.95)', // Peach-white gradient base
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  logoContainer: {
+    marginRight: 12,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 32,
+    height: 32,
+  },
+  projectSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 12,
+    flex: 1,
+    marginLeft: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  projectInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  projectName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  projectType: {
+    fontSize: 12,
+    color: '#666',
   },
   header: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 248, 243, 0.95)', // Match container background
     paddingTop: 10,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -691,7 +767,7 @@ const styles = StyleSheet.create({
   },
   chatArea: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: 'rgba(255, 248, 243, 0.95)', // Peach-white gradient base
   },
   conversation: {
     flex: 1,

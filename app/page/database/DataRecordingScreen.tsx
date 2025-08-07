@@ -581,6 +581,13 @@ export default function DataRecordingScreen() {
     return Array.from(headers);
   };
 
+  // Calculate column width based on number of columns
+  const getColumnWidth = () => {
+    const headers = getAllColumnHeaders();
+    const screenWidth = 350; // Approximate table width
+    return Math.max(screenWidth / headers.length, 100); // Minimum 100px per column
+  };
+
   // Render CSV-style table
   const renderCSVTable = () => {
     console.log('Rendering CSV table with samples:', recordedSamples.length);
@@ -595,7 +602,8 @@ export default function DataRecordingScreen() {
     }
 
     const headers = getAllColumnHeaders();
-    console.log('CSV headers:', headers);
+    const columnWidth = getColumnWidth();
+    console.log('CSV headers:', headers, 'Column width:', columnWidth);
 
     return (
       <View style={styles.csvContainer}>
@@ -604,8 +612,8 @@ export default function DataRecordingScreen() {
           <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={true} style={styles.tableScrollVertical}>
             {/* Header Row */}
             <View style={styles.tableRow}>
-              {headers.map((header, index) => (
-                <View key={header} style={[styles.tableHeader, index === 0 && styles.firstColumn]}>
+              {headers.map((header) => (
+                <View key={header} style={[styles.tableHeader, { width: columnWidth }]}>
                   <Text style={styles.tableHeaderText}>{header}</Text>
                 </View>
               ))}
@@ -614,7 +622,7 @@ export default function DataRecordingScreen() {
             {/* Data Rows */}
             {recordedSamples.map((sample, rowIndex) => (
               <View key={sample.id} style={[styles.tableRow, rowIndex % 2 === 1 && styles.alternateRow]}>
-                {headers.map((header, colIndex) => {
+                {headers.map((header) => {
                   let cellValue = '';
                   if (header === 'timestamp') {
                     cellValue = sample.timestamp.toLocaleString();
@@ -625,7 +633,7 @@ export default function DataRecordingScreen() {
                   }
                   
                   return (
-                    <View key={`${sample.id}-${header}`} style={[styles.tableCell, colIndex === 0 && styles.firstColumn]}>
+                    <View key={`${sample.id}-${header}`} style={[styles.tableCell, { width: columnWidth }]}>
                       <Text style={styles.tableCellText}>{cellValue}</Text>
                     </View>
                   );
@@ -1118,7 +1126,6 @@ const styles = StyleSheet.create({
   tableHeader: {
     backgroundColor: '#EF9144',
     padding: 12,
-    minWidth: 120,
     borderRightWidth: 1,
     borderRightColor: '#fff',
   },
@@ -1130,7 +1137,6 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     padding: 10,
-    minWidth: 120,
     borderRightWidth: 1,
     borderRightColor: '#E5E7EB',
     justifyContent: 'center',
@@ -1139,8 +1145,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#1a1a1a',
     textAlign: 'center',
-  },
-  firstColumn: {
-    minWidth: 140,
+    flexWrap: 'wrap',
   },
 });

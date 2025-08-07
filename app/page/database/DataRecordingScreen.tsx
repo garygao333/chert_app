@@ -47,15 +47,32 @@ interface DataField {
   source: 'voice' | 'image' | 'manual';
 }
 
+interface RecordedSample {
+  id: string;
+  timestamp: Date;
+  fields: { [key: string]: string };
+  confidence: number;
+}
+
 export default function DataRecordingScreen() {
   const navigation = useNavigation<DataRecordingNavigationProp>();
   const route = useRoute<DataRecordingRouteProp>();
+  
+  // Counter to ensure unique IDs
+  const messageIdCounter = useRef(0);
+  
+  // Helper function to generate unique message IDs
+  const generateMessageId = (prefix = 'msg') => {
+    messageIdCounter.current += 1;
+    return `${prefix}-${Date.now()}-${messageIdCounter.current}`;
+  };
+  
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [conversation, setConversation] = useState<ConversationMessage[]>([
     {
-      id: '1',
+      id: 'initial-message-1',
       type: 'assistant',
       content: 'Hi! I\'m your AI archaeological assistant. I can help you record field data through voice, photos, or text. What would you like to document today?',
       timestamp: new Date(),
@@ -64,7 +81,9 @@ export default function DataRecordingScreen() {
   const [currentRecord, setCurrentRecord] = useState<DataField[]>([]);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [workflowPlan, setWorkflowPlan] = useState<any>(null);
+  const [recordedSamples, setRecordedSamples] = useState<RecordedSample[]>([]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const { projectId, tableName } = route.params;
   const [project, setProject] = useState<Project | null>(null);
@@ -84,12 +103,21 @@ export default function DataRecordingScreen() {
     loadProject();
   }, [projectId]);
 
+  // Auto-scroll to bottom when new samples are added
+  useEffect(() => {
+    if (recordedSamples.length > 0 && scrollViewRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [recordedSamples.length]);
+
   // Initialize audio permissions and test backend connection
   useEffect(() => {
     (async () => {
       // Test backend connection first
       try {
-        const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://10.31.38.209:8000';
+        const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://192.168.7.214:8000';
         console.log('Testing backend connection to:', API_URL);
         
         const response = await fetch(`${API_URL}/health`, {
@@ -109,7 +137,7 @@ export default function DataRecordingScreen() {
         
         // Add system message about backend status
         const backendMessage: ConversationMessage = {
-          id: 'backend-status',
+          id: generateMessageId('backend-status'),
           type: 'system',
           content: `🔗 Backend connected successfully!\n\nServer: ${API_URL}\nStatus: ${data.status}\n\n✅ Voice AI agent is ready for mobile use!`,
           timestamp: new Date(),
@@ -119,7 +147,7 @@ export default function DataRecordingScreen() {
         console.error('Backend connection failed:', error);
         
         const errorMessage: ConversationMessage = {
-          id: 'backend-error',
+          id: generateMessageId('backend-error'),
           type: 'system',
           content: `❌ Backend connection failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\n💡 Troubleshooting:\n• Make sure the backend server is running\n• Check if your device is on the same WiFi network\n• Try restarting the Expo development server`,
           timestamp: new Date(),
@@ -281,7 +309,7 @@ export default function DataRecordingScreen() {
           const result = await ApiService.processVoiceInputMobile(fileInfo, projectId);
           
           const userMessage: ConversationMessage = {
-            id: Date.now().toString(),
+            id: generateMessageId('user'),
             type: 'user',
             content: result.transcription,
             timestamp: new Date(),
@@ -308,7 +336,7 @@ export default function DataRecordingScreen() {
           }
           
           const assistantMessage: ConversationMessage = {
-            id: (Date.now() + 1).toString(),
+            id: generateMessageId('assistant'),
             type: 'assistant',
             content: assistantContent,
             timestamp: new Date(),
@@ -445,17 +473,43 @@ export default function DataRecordingScreen() {
             try {
               console.log('Committing record:', currentRecord);
               
+              // Create a sample record for the CSV table
+              const sampleFields: { [key: string]: string } = {};
+              let totalConfidence = 0;
+              
+              currentRecord.forEach(field => {
+                sampleFields[field.name] = field.value;
+                totalConfidence += field.confidence;
+              });
+              
+              const avgConfidence = totalConfidence / currentRecord.length;
+              
+              const newSample: RecordedSample = {
+                id: Date.now().toString(),
+                timestamp: new Date(),
+                fields: sampleFields,
+                confidence: avgConfidence,
+              };
+              
+              // Add to recorded samples
+              setRecordedSamples(prev => {
+                const updated = [...prev, newSample];
+                console.log('Updated recordedSamples:', updated);
+                return updated;
+              });
+              
               const metadata: RecordMetadata = {
                 recordingMethod: 'voice',
                 reasoning: `Processed ${currentRecord.length} fields from user input`,
               };
               
               console.log('Record committed with metadata:', metadata);
+              console.log('New sample added:', newSample);
               
               const successMessage: ConversationMessage = {
                 id: Date.now().toString(),
                 type: 'system',
-                content: `✅ Record committed successfully! Saved ${currentRecord.length} fields to ${tableName}.`,
+                content: `✅ Record committed successfully! Saved ${currentRecord.length} fields to local CSV. Total samples: ${recordedSamples.length + 1}`,
                 timestamp: new Date(),
               };
               
@@ -464,10 +518,6 @@ export default function DataRecordingScreen() {
               // Clear current record
               setCurrentRecord([]);
               
-              // Navigate back after a short delay
-              setTimeout(() => {
-                navigation.goBack();
-              }, 1500);
             } catch (error) {
               console.error('Commit error:', error);
               Alert.alert('Error', 'Failed to commit record. Please try again.');
@@ -522,6 +572,72 @@ export default function DataRecordingScreen() {
     return '#F44336';
   };
 
+  // Get all unique column headers from recorded samples
+  const getAllColumnHeaders = () => {
+    const headers = new Set(['timestamp', 'confidence']);
+    recordedSamples.forEach(sample => {
+      Object.keys(sample.fields).forEach(key => headers.add(key));
+    });
+    return Array.from(headers);
+  };
+
+  // Render CSV-style table
+  const renderCSVTable = () => {
+    console.log('Rendering CSV table with samples:', recordedSamples.length);
+    
+    if (recordedSamples.length === 0) {
+      return (
+        <View style={styles.csvContainer}>
+          <Text style={styles.csvTitle}>Recorded Data (CSV View)</Text>
+          <Text style={styles.noDataText}>No samples recorded yet. Start recording to see data here!</Text>
+        </View>
+      );
+    }
+
+    const headers = getAllColumnHeaders();
+    console.log('CSV headers:', headers);
+
+    return (
+      <View style={styles.csvContainer}>
+        <Text style={styles.csvTitle}>Recorded Data ({recordedSamples.length} samples)</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.tableScrollHorizontal}>
+          <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={true} style={styles.tableScrollVertical}>
+            {/* Header Row */}
+            <View style={styles.tableRow}>
+              {headers.map((header, index) => (
+                <View key={header} style={[styles.tableHeader, index === 0 && styles.firstColumn]}>
+                  <Text style={styles.tableHeaderText}>{header}</Text>
+                </View>
+              ))}
+            </View>
+            
+            {/* Data Rows */}
+            {recordedSamples.map((sample, rowIndex) => (
+              <View key={sample.id} style={[styles.tableRow, rowIndex % 2 === 1 && styles.alternateRow]}>
+                {headers.map((header, colIndex) => {
+                  let cellValue = '';
+                  if (header === 'timestamp') {
+                    cellValue = sample.timestamp.toLocaleString();
+                  } else if (header === 'confidence') {
+                    cellValue = `${Math.round(sample.confidence * 100)}%`;
+                  } else {
+                    cellValue = sample.fields[header] || '';
+                  }
+                  
+                  return (
+                    <View key={`${sample.id}-${header}`} style={[styles.tableCell, colIndex === 0 && styles.firstColumn]}>
+                      <Text style={styles.tableCellText}>{cellValue}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </ScrollView>
+        </ScrollView>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -557,53 +673,59 @@ export default function DataRecordingScreen() {
         </View>
       </View>
 
-      {/* Chat Area */}
-      <View style={styles.chatArea}>
-        <ScrollView style={styles.conversation} showsVerticalScrollIndicator={false} contentContainerStyle={styles.conversationContent}>
-          {/* Initial System Message */}
-          <View style={styles.systemMessage}>
-            <Text style={styles.systemMessageText}>
-              Hello! I can help you analyze your data. What would you like to know?
-            </Text>
-            <Text style={styles.systemMessageTime}>10:43 PM</Text>
-          </View>
+      {/* Content Area - CSV Table on top, Chat on bottom */}
+      <View style={styles.contentArea}>
+        {/* CSV Table Area - Top Half */}
+        {renderCSVTable()}
+        
+        {/* Chat Area - Bottom Half */}
+        <View style={styles.chatArea}>
+          <ScrollView style={styles.conversation} showsVerticalScrollIndicator={false} contentContainerStyle={styles.conversationContent}>
+            {/* Initial System Message */}
+            <View style={styles.systemMessage}>
+              <Text style={styles.systemMessageText}>
+                Hello! I can help you analyze your data. What would you like to know?
+              </Text>
+              <Text style={styles.systemMessageTime}>10:43 PM</Text>
+            </View>
 
-          {conversation.map((message) => (
-            <View
-              key={message.id}
-              style={[
-                styles.messageContainer,
-                message.type === 'user' ? styles.userMessage : styles.assistantMessage
-              ]}
-            >
-              <Text style={[
-                styles.messageText,
-                message.type === 'user' ? styles.userMessageText : styles.assistantMessageText
-              ]}>
-                {message.content}
-              </Text>
-              {message.metadata?.confidence && (
-                <View style={styles.confidenceContainer}>
-                  <Text style={styles.confidenceText}>
-                    Confidence: {Math.round(message.metadata.confidence * 100)}%
-                  </Text>
-                  <View style={[
-                    styles.confidenceBar,
-                    { backgroundColor: getConfidenceColor(message.metadata.confidence) }
-                  ]} />
-                </View>
-              )}
-            </View>
-          ))}
-          
-          {isProcessing && (
-            <View style={[styles.messageContainer, styles.assistantMessage]}>
-              <Text style={styles.assistantMessageText}>
-                Processing your input...
-              </Text>
-            </View>
-          )}
-        </ScrollView>
+            {conversation.map((message) => (
+              <View
+                key={message.id}
+                style={[
+                  styles.messageContainer,
+                  message.type === 'user' ? styles.userMessage : styles.assistantMessage
+                ]}
+              >
+                <Text style={[
+                  styles.messageText,
+                  message.type === 'user' ? styles.userMessageText : styles.assistantMessageText
+                ]}>
+                  {message.content}
+                </Text>
+                {message.metadata?.confidence && (
+                  <View style={styles.confidenceContainer}>
+                    <Text style={styles.confidenceText}>
+                      Confidence: {Math.round(message.metadata.confidence * 100)}%
+                    </Text>
+                    <View style={[
+                      styles.confidenceBar,
+                      { backgroundColor: getConfidenceColor(message.metadata.confidence) }
+                    ]} />
+                  </View>
+                )}
+              </View>
+            ))}
+            
+            {isProcessing && (
+              <View style={[styles.messageContainer, styles.assistantMessage]}>
+                <Text style={styles.assistantMessageText}>
+                  Processing your input...
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
       </View>
 
       {/* Input Area */}
@@ -633,10 +755,17 @@ export default function DataRecordingScreen() {
             <Text style={styles.bottomActionText}>Photo</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.bottomActionButton} onPress={() => {}}>
-            <Ionicons name="flask" size={20} color="#FF9800" />
-            <Text style={styles.bottomActionText}>Test AI</Text>
-          </TouchableOpacity>
+          {currentRecord.length > 0 ? (
+            <TouchableOpacity style={styles.bottomActionButton} onPress={commitRecord}>
+              <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+              <Text style={styles.bottomActionText}>Commit ({currentRecord.length})</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.bottomActionButton} onPress={() => {}}>
+              <Ionicons name="flask" size={20} color="#FF9800" />
+              <Text style={styles.bottomActionText}>Test AI</Text>
+            </TouchableOpacity>
+          )}
           
           {/* Central Record Button */}
           <View style={styles.centralRecordContainer}>
@@ -764,6 +893,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginRight: 4,
+  },
+  contentArea: {
+    flex: 1,
+    flexDirection: 'column',
   },
   chatArea: {
     flex: 1,
@@ -936,5 +1069,78 @@ const styles = StyleSheet.create({
   processingButton: {
     backgroundColor: '#FF9800',
     shadowColor: '#FF9800',
+  },
+  // CSV Table Styles
+  csvContainer: {
+    flex: 2,
+    backgroundColor: '#fff',
+    marginHorizontal: 10,
+    marginTop: 10,
+    marginBottom: 5,
+    borderRadius: 8,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  csvTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  noDataText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  tableScrollHorizontal: {
+    flex: 1,
+  },
+  tableScrollVertical: {
+    flex: 1,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  alternateRow: {
+    backgroundColor: '#F9FAFB',
+  },
+  tableHeader: {
+    backgroundColor: '#EF9144',
+    padding: 12,
+    minWidth: 120,
+    borderRightWidth: 1,
+    borderRightColor: '#fff',
+  },
+  tableHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  tableCell: {
+    padding: 10,
+    minWidth: 120,
+    borderRightWidth: 1,
+    borderRightColor: '#E5E7EB',
+    justifyContent: 'center',
+  },
+  tableCellText: {
+    fontSize: 11,
+    color: '#1a1a1a',
+    textAlign: 'center',
+  },
+  firstColumn: {
+    minWidth: 140,
   },
 });

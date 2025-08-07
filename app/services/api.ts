@@ -4,7 +4,7 @@ import type { Project, DataRecord, RecentActivity } from '../types';
 import { supabase } from './supabase';
 
 // Get API URL from environment
-const API_URL = Constants.expoConfig?.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL || 'http://10.31.38.209:8000';
+const API_URL = Constants.expoConfig?.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL || 'http://192.168.7.214:8000';
 
 // API service for backend integration
 export class ApiService {

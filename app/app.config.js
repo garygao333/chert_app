@@ -32,7 +32,7 @@ export default {
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-      apiUrl: process.env.EXPO_PUBLIC_API_URL || "http://10.31.38.209:8000"
+      apiUrl: process.env.EXPO_PUBLIC_API_URL || "http://192.168.7.214:8000"
     },
     plugins: [
       "expo-av"

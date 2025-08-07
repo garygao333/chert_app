@@ -44,7 +44,7 @@
       "expo-location"
     ],
     "extra": {
-      "apiUrl": "http://10.31.38.209:8000"
+      "apiUrl": "http://192.168.7.214:8000"
     }
   }
 }

@@ -1,4 +1,4 @@
-import 'dotenv/config';
+// Remove dotenv import for production builds - use hardcoded values instead
 
 export default {
   expo: {
@@ -8,7 +8,6 @@ export default {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-    newArchEnabled: true,
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
@@ -16,7 +15,31 @@ export default {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.chert.app"
+      bundleIdentifier: "com.chert.app",
+      buildNumber: "6",
+      icon: "./assets/icon.png",
+      infoPlist: {
+        NSAppTransportSecurity: {
+          NSAllowsArbitraryLoads: true,
+          NSExceptionDomains: {
+            "localhost": {
+              NSExceptionAllowsInsecureHTTPLoads: true,
+              NSExceptionMinimumTLSVersion: "1.0"
+            },
+            "supabase.co": {
+              NSExceptionRequiresForwardSecrecy: false,
+              NSExceptionMinimumTLSVersion: "1.0"
+            },
+            "herokuapp.com": {
+              NSExceptionRequiresForwardSecrecy: false,
+              NSExceptionMinimumTLSVersion: "1.0"
+            }
+          }
+        }
+      },
+      config: {
+        usesNonExemptEncryption: false
+      }
     },
     android: {
       adaptiveIcon: {
@@ -30,12 +53,23 @@ export default {
       favicon: "./assets/favicon.png"
     },
     extra: {
-      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-      apiUrl: process.env.EXPO_PUBLIC_API_URL || "http://192.168.7.214:8000"
+      supabaseUrl: "https://suiqpfnvfadscyvtgcjz.supabase.co",
+      supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1aXFwZm52ZmFkc2N5dnRnY2p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTc5MDQsImV4cCI6MjA2OTA3MzkwNH0.c-Twnh7ZlO9dBFKpTye1VMciXfeXeczlWkyJAZurx4g",
+      apiUrl: "https://chert-backend-d92c4cd51927.herokuapp.com",
+      eas: {
+        projectId: "df54e4af-a952-4515-a6fd-481cc9f896c6"
+      }
     },
     plugins: [
-      "expo-av"
+      "expo-av",
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            useFrameworks: "static"
+          }
+        }
+      ]
     ]
   }
 };

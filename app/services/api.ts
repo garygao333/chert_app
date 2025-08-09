@@ -1,10 +1,9 @@
 // API service for backend integration
-import Constants from 'expo-constants';
 import type { Project, DataRecord, RecentActivity } from '../types';
 import { supabase } from './supabase';
 
-// Get API URL from environment
-const API_URL = Constants.expoConfig?.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL || 'http://192.168.7.214:8000';
+// Use hardcoded production API URL
+const API_URL = 'https://chert-backend-d92c4cd51927.herokuapp.com';
 
 // API service for backend integration
 export class ApiService {

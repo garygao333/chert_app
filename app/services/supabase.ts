@@ -1,14 +1,9 @@
 // Supabase configuration and client setup
 import { createClient } from '@supabase/supabase-js';
-import Constants from 'expo-constants';
 
-// Get configuration from environment variables
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase configuration. Please check your .env file and ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set.');
-}
+// Hardcoded production Supabase configuration
+const supabaseUrl = "https://suiqpfnvfadscyvtgcjz.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1aXFwZm52ZmFkc2N5dnRnY2p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTc5MDQsImV4cCI6MjA2OTA3MzkwNH0.c-Twnh7ZlO9dBFKpTye1VMciXfeXeczlWkyJAZurx4g";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

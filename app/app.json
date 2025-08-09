@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.chert.app",
+      "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs access to microphone for voice recording of archaeological data.",
         "NSCameraUsageDescription": "This app needs access to camera for photographing archaeological artifacts.",

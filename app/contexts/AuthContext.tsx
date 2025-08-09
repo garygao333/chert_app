@@ -27,13 +27,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = FirebaseAuthService.onAuthStateChanged((user) => {
-      console.log('Auth state changed:', user ? 'User signed in' : 'User signed out');
-      setUser(user);
-      setLoading(false);
-    });
+    let unsubscribe: (() => void) | undefined;
+    
+    try {
+      console.log('🔐 Setting up auth listener...');
+      unsubscribe = FirebaseAuthService.onAuthStateChanged((user) => {
+        console.log('Auth state changed:', user ? 'User signed in' : 'User signed out');
+        setUser(user);
+        setLoading(false);
+      });
+      console.log('✅ Auth listener setup complete');
+    } catch (error) {
+      console.error('❌ Auth setup failed:', error);
+      setLoading(false); // Don't stay loading forever
+    }
 
-    return unsubscribe;
+    return () => {
+      if (unsubscribe) {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.warn('Auth unsubscribe error:', error);
+        }
+      }
+    };
   }, []);
 
   const signOut = async () => {

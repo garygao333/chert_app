@@ -17,7 +17,6 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import Constants from 'expo-constants';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { Project } from '../../types';
 import FirebaseService from '../../services/firebaseService';
@@ -117,7 +116,7 @@ export default function DataRecordingScreen() {
     (async () => {
       // Test backend connection first
       try {
-        const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://192.168.7.214:8000';
+        const API_URL = 'https://chert-backend-d92c4cd51927.herokuapp.com';
         console.log('Testing backend connection to:', API_URL);
         
         const response = await fetch(`${API_URL}/health`, {

@@ -1,5 +1,8 @@
-import { registerRootComponent } from 'expo';
+// Import polyfills first
+import 'react-native-url-polyfill/auto';
+import '@expo/metro-runtime';
 
+import { registerRootComponent } from 'expo';
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

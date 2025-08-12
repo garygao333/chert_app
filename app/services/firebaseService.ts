@@ -520,6 +520,79 @@ class FirebaseService {
       return null;
     }
   }
+
+  // Get commit logs for a project
+  async getCommitLogs(projectId: string): Promise<Array<Record<string, any>>> {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+
+      console.log(`DEBUG: Getting commit logs for project ${projectId}, user ${user.uid}`);
+
+      // Find commit logs for this project
+      const q = query(
+        collection(db, 'commit_logs'),
+        where('projectId', '==', projectId),
+        where('userId', '==', user.uid)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      console.log(`DEBUG: Found ${querySnapshot.size} commit log documents`);
+      
+      const commitLogs = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate() || new Date()
+      }));
+
+      // Sort by timestamp (newest first)
+      commitLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+      console.log(`DEBUG: Returning ${commitLogs.length} commit logs:`, commitLogs);
+      return commitLogs;
+    } catch (error) {
+      console.error('Error getting commit logs:', error);
+      return [];
+    }
+  }
+
+  // Get first 5 samples from project CSV
+  async getProjectSamples(projectId: string): Promise<Array<Record<string, any>>> {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+
+      console.log(`DEBUG: Getting samples for project ${projectId}, user ${user.uid}`);
+
+      // Find project_csvs document
+      const q = query(
+        collection(db, 'project_csvs'),
+        where('projectId', '==', projectId),
+        where('userId', '==', user.uid)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      console.log(`DEBUG: Found ${querySnapshot.size} project_csvs documents for samples`);
+      
+      if (querySnapshot.empty) {
+        console.log('DEBUG: No project_csvs document found for samples');
+        return [];
+      }
+
+      const csvData = querySnapshot.docs[0].data();
+      const rows = csvData.rows || [];
+      console.log(`DEBUG: CSV data for samples:`, csvData);
+      console.log(`DEBUG: Total rows available: ${rows.length}`);
+
+      // Return first 5 rows
+      const samples = rows.slice(0, 5);
+      console.log(`DEBUG: Returning ${samples.length} samples:`, samples);
+      return samples;
+    } catch (error) {
+      console.error('Error getting project samples:', error);
+      return [];
+    }
+  }
 }
 
 export default new FirebaseService();

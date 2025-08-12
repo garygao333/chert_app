@@ -35,12 +35,16 @@ export default function EnhancedProjectDetailScreen() {
   const [records, setRecords] = useState<ProjectRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'log' | 'insights' | 'export'>('log');
+  const [commitLogs, setCommitLogs] = useState<Array<Record<string, any>>>([]);
+  const [projectSamples, setProjectSamples] = useState<Array<Record<string, any>>>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'voice' | 'camera' | 'today'>('all');
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     loadProject();
     loadRecords();
+    loadCommitLogs();
+    loadProjectSamples();
   }, [projectId]);
 
   const loadProject = async () => {
@@ -53,18 +57,65 @@ export default function EnhancedProjectDetailScreen() {
     }
   };
 
+  const loadCommitLogs = async () => {
+    try {
+      const logs = await FirebaseService.getCommitLogs(projectId);
+      setCommitLogs(logs);
+    } catch (error) {
+      console.error('Error loading commit logs:', error);
+    }
+  };
+
+  const loadProjectSamples = async () => {
+    try {
+      const samples = await FirebaseService.getProjectSamples(projectId);
+      setProjectSamples(samples);
+    } catch (error) {
+      console.error('Error loading project samples:', error);
+    }
+  };
+
   const loadRecords = async () => {
     try {
       setLoading(true);
-      const result = await FirebaseService.getDataRecords(projectId);
-      // Map the records to include metadata if method is available
+      
+      // Load both regular records and commit logs
+      const [result, commitLogsData] = await Promise.all([
+        FirebaseService.getDataRecords(projectId),
+        FirebaseService.getCommitLogs(projectId)
+      ]);
+
+      // Map the regular records to include metadata if method is available
       const mappedRecords = result.records.map((record: any) => ({
         ...record,
         metadata: record.method ? {
           recordingMethod: record.method as 'voice' | 'image' | 'manual'
         } : undefined
       }));
-      setRecords(mappedRecords);
+
+      // Convert commit logs to records format
+      const commitRecords = commitLogsData.map((log: any) => ({
+        id: `commit_${log.id}`,
+        projectId,
+        data: {
+          action: log.action,
+          description: log.description,
+          recordsAdded: log.recordsAdded
+        },
+        method: 'sync',
+        source: 'mobile_commit',
+        createdAt: log.timestamp,
+        metadata: {
+          recordingMethod: 'manual' as const,
+          isCommitLog: true
+        }
+      }));
+
+      // Combine and sort by creation date
+      const allRecords = [...mappedRecords, ...commitRecords]
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+      setRecords(allRecords);
     } catch (error) {
       console.error('Error loading records:', error);
     } finally {
@@ -91,7 +142,10 @@ export default function EnhancedProjectDetailScreen() {
     navigation.navigate('DataRecording', { projectId });
   };
 
-  const getRecordIcon = (method: string) => {
+  const getRecordIcon = (method: string, isCommitLog?: boolean) => {
+    if (isCommitLog) {
+      return { name: 'cloud-upload-outline', color: '#EF9144' };
+    }
     switch (method) {
       case 'voice':
         return { name: 'mic-outline', color: '#10B981' };
@@ -99,6 +153,8 @@ export default function EnhancedProjectDetailScreen() {
         return { name: 'camera-outline', color: '#3B82F6' };
       case 'manual':
         return { name: 'create-outline', color: '#8B5CF6' };
+      case 'sync':
+        return { name: 'cloud-upload-outline', color: '#EF9144' };
       default:
         return { name: 'document-outline', color: '#6B7280' };
     }
@@ -120,6 +176,11 @@ export default function EnhancedProjectDetailScreen() {
   };
 
   const getRecordContent = (record: ProjectRecord) => {
+    // Handle commit logs specially
+    if (record.metadata?.isCommitLog) {
+      return record.data.description || 'Sync operation completed';
+    }
+
     // Get the first non-empty value from the data
     if (!record.data) return 'No content';
     
@@ -335,7 +396,8 @@ export default function EnhancedProjectDetailScreen() {
             <>
               {filteredRecords.map((record) => {
                 const method = record.metadata?.recordingMethod || 'manual';
-                const icon = getRecordIcon(method);
+                const isCommitLog = record.metadata?.isCommitLog || false;
+                const icon = getRecordIcon(method, isCommitLog);
                 const tags = extractTags(record.data);
                 const content = getRecordContent(record);
                 
@@ -346,7 +408,7 @@ export default function EnhancedProjectDetailScreen() {
                         <Ionicons name={icon.name as any} size={14} color={icon.color} />
                       </View>
                       <Text style={[styles.logType, { color: icon.color }]}>
-                        {method.charAt(0).toUpperCase() + method.slice(1)}
+                        {isCommitLog ? 'Sync' : method.charAt(0).toUpperCase() + method.slice(1)}
                       </Text>
                       <Text style={styles.logTime}>{getTimeAgo(record.createdAt)}</Text>
                     </View>
@@ -383,9 +445,41 @@ export default function EnhancedProjectDetailScreen() {
       )}
 
       {activeTab === 'insights' && (
-        <View style={styles.insightsContainer}>
-          <Text style={styles.insightsText}>Insights coming soon...</Text>
-        </View>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {projectSamples.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyStateIcon}>
+                <Ionicons name="bar-chart-outline" size={64} color="#E5E7EB" />
+              </View>
+              <Text style={styles.emptyStateText}>No data samples</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Start recording data to see insights here
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.samplesContainer}>
+              <Text style={styles.samplesTitle}>Recent Data Samples</Text>
+              {projectSamples.map((sample, index) => (
+                <View key={index} style={styles.sampleItem}>
+                  {Object.entries(sample).map(([key, value]) => (
+                    key !== 'timestamp' && key !== 'confidence' && (
+                      <View key={key} style={styles.sampleField}>
+                        <Text style={styles.sampleFieldName}>{key}:</Text>
+                        <Text style={styles.sampleFieldValue}>{String(value)}</Text>
+                      </View>
+                    )
+                  ))}
+                  {sample.timestamp && (
+                    <Text style={styles.sampleTimestamp}>
+                      {new Date(sample.timestamp).toLocaleDateString()}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={{ height: 80 }} />
+        </ScrollView>
       )}
 
       {activeTab === 'export' && (
@@ -677,5 +771,49 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 8,
+  },
+  samplesContainer: {
+    backgroundColor: '#FAFBFC',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 4,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  samplesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  sampleItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    marginBottom: 8,
+  },
+  sampleField: {
+    flexDirection: 'row',
+    marginBottom: 6,
+  },
+  sampleFieldName: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+    width: 100,
+  },
+  sampleFieldValue: {
+    fontSize: 13,
+    color: '#374151',
+    flex: 1,
+  },
+  sampleTimestamp: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 4,
   },
 });

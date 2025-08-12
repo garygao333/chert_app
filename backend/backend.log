@@ -1,0 +1,600 @@
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "ProjectResponse" shadows an attribute in parent "ProjectBase"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "AgentState" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "SchemaAnalysisResponse" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+INFO:voice_agent:VoiceAgent initialized successfully
+/Users/garygao/Desktop/chertapp/backend/main.py:49: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Will watch for changes in these directories: ['/Users/garygao/Desktop/chertapp/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [81265] using StatReload
+[DEBUG] VoiceAgent initialized successfully
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "ProjectResponse" shadows an attribute in parent "ProjectBase"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "AgentState" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "SchemaAnalysisResponse" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+INFO:voice_agent:VoiceAgent initialized successfully
+INFO:voice_agent:VoiceAgent initialized successfully
+INFO:     Started server process [81269]
+INFO:     Waiting for application startup.
+INFO:main:Starting Chert API server...
+INFO:main:Services initialized successfully
+INFO:     Application startup complete.
+INFO:main:Processing text input for project test123: test message
+INFO:main:Raw project_schema parameter: {"dataColumns":["Test Column"],"columnAnnotations":{}}
+INFO:main:Type of project_schema: <class 'str'>
+INFO:main:✅ Successfully parsed project schema: {'dataColumns': ['Test Column'], 'columnAnnotations': {}}
+INFO:voice_agent:Processing text input: 'test message'
+INFO:voice_agent:🔍 get_project_schema_from_firebase called with:
+INFO:voice_agent:  project_id: test123
+INFO:voice_agent:  provided_schema: {'dataColumns': ['Test Column'], 'columnAnnotations': {}}
+INFO:voice_agent:  provided_schema type: <class 'dict'>
+INFO:voice_agent:✅ Using provided schema for project test123
+INFO:voice_agent:📊 Found dataColumns: ['Test Column']
+INFO:voice_agent:📊 Number of dataColumns: 1
+INFO:voice_agent:  ➕ Added column: Test Column (text)
+INFO:voice_agent:✅ Generated schema with 4 columns
+INFO:voice_agent:📋 Data column names for LLM: ['Test Column']
+INFO:voice_agent:Retrieved schema: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Test Column', 'type': 'text', 'description': 'Test Column field', 'required': True, 'auto': False}]}
+INFO:voice_agent:Raw project schema from frontend: {'dataColumns': ['Test Column'], 'columnAnnotations': {}}
+INFO:voice_agent:Using direct LLM extraction with project schema
+INFO:voice_agent:About to call _extract_with_llm with text: 'test message'
+INFO:voice_agent:Schema being passed: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Test Column', 'type': 'text', 'description': 'Test Column field', 'required': True, 'auto': False}]}
+INFO:voice_agent:🔍 LLM extraction schema analysis:
+INFO:voice_agent:  Total columns: 4
+INFO:voice_agent:  Data columns (non-auto): 1
+INFO:voice_agent:  Data column names: ['Test Column']
+INFO:voice_agent:Calling LLM with prompt of length: 903
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:voice_agent:LLM call successful, response type: <class 'langchain_core.messages.ai.AIMessage'>
+INFO:voice_agent:LLM extraction prompt (first 200 chars): Extract structured data from the following text into the specified schema.
+
+Extract data for these fields (use EXACT field names in JSON):
+- "Test Column" (text): Test Column field
+
+
+CRITICAL INSTRUCT...
+INFO:voice_agent:LLM extraction response: ```json
+{
+  "Test Column": "test message"
+}
+```
+INFO:voice_agent:Valid fields from schema: ['Test Column']
+INFO:voice_agent:LLM returned fields: ['Test Column']
+INFO:voice_agent:Case-insensitive field mapping: {'test column': 'Test Column'}
+INFO:voice_agent:✅ Accepted field (exact match): Test Column = test message
+INFO:voice_agent:Final filtered data: {'Test Column': 'test message'}
+INFO:voice_agent:EXTRACTION SUMMARY:
+INFO:voice_agent:  LLM returned: ['Test Column']
+INFO:voice_agent:  After validation: ['Test Column']
+INFO:voice_agent:  Rejected fields: []
+INFO:voice_agent:LLM extraction returned: {'Test Column': 'test message'}
+INFO:voice_agent:Type of extracted_data: <class 'dict'>
+INFO:voice_agent:Checking if extracted_data has values: extracted_data={'Test Column': 'test message'}
+INFO:voice_agent:extracted_data bool: True
+INFO:voice_agent:extracted_data.values(): ['test message']
+INFO:voice_agent:any(extracted_data.values()): True
+INFO:voice_agent:Writing extracted data to samples: {'Test Column': 'test message'}
+INFO:voice_agent:Database write result: {'success': False, 'error': 'Error writing to database: HTTPSConnectionPool(host=\'suiqpfnvfadscyvtgcjz.supabase.co\', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10a8097f0>: Failed to resolve \'suiqpfnvfadscyvtgcjz.supabase.co\' ([Errno 8] nodename nor servname provided, or not known)"))'}
+INFO:main:Text processing completed: transcription='test message' extracted_data={'Test Column': 'test message'} confidence=0.9 suggested_fields=[] reasoning="Extracted data: {'Test Column': 'test message'}, but database write failed" commit_id=None workflow_plan={'steps': ['transcribe', 'extract_data', 'store_in_database'], 'status': 'partial', 'database_result': {'success': False, 'error': 'Error writing to database: HTTPSConnectionPool(host=\'suiqpfnvfadscyvtgcjz.supabase.co\', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10a8097f0>: Failed to resolve \'suiqpfnvfadscyvtgcjz.supabase.co\' ([Errno 8] nodename nor servname provided, or not known)"))'}} tool_events=None
+[DEBUG] VoiceAgent initialized successfully
+[DEBUG] VoiceAgent initialized successfully
+[DEBUG] Processing text input: 'test message'
+[DEBUG] 🔍 get_project_schema_from_firebase called with:
+[DEBUG]   project_id: test123
+[DEBUG]   provided_schema: {'dataColumns': ['Test Column'], 'columnAnnotations': {}}
+[DEBUG]   provided_schema type: <class 'dict'>
+[DEBUG] ✅ Using provided schema for project test123
+[DEBUG] 📊 Found dataColumns: ['Test Column']
+[DEBUG] 📊 Number of dataColumns: 1
+[DEBUG]   ➕ Added column: Test Column (text)
+[DEBUG] ✅ Generated schema with 4 columns
+[DEBUG] 📋 Data column names for LLM: ['Test Column']
+[DEBUG] Retrieved schema: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Test Column', 'type': 'text', 'description': 'Test Column field', 'required': True, 'auto': False}]}
+[DEBUG] Raw project schema from frontend: {'dataColumns': ['Test Column'], 'columnAnnotations': {}}
+[DEBUG] Using direct LLM extraction with project schema
+[DEBUG] About to call _extract_with_llm with text: 'test message'
+[DEBUG] Schema being passed: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Test Column', 'type': 'text', 'description': 'Test Column field', 'required': True, 'auto': False}]}
+[DEBUG] 🔍 LLM extraction schema analysis:
+[DEBUG]   Total columns: 4
+[DEBUG]   Data columns (non-auto): 1
+[DEBUG]   Data column names: ['Test Column']
+[DEBUG] Calling LLM with prompt of length: 903
+[DEBUG] LLM call successful, response type: <class 'langchain_core.messages.ai.AIMessage'>
+[DEBUG] LLM extraction prompt (first 200 chars): Extract structured data from the following text into the specified schema.
+
+Extract data for these fields (use EXACT field names in JSON):
+- "Test Column" (text): Test Column field
+
+
+CRITICAL INSTRUCT...
+[DEBUG] LLM extraction response: ```json
+{
+  "Test Column": "test message"
+}
+```
+[DEBUG] Valid fields from schema: ['Test Column']
+[DEBUG] LLM returned fields: ['Test Column']
+[DEBUG] Case-insensitive field mapping: {'test column': 'Test Column'}
+[DEBUG] ✅ Accepted field (exact match): Test Column = test message
+[DEBUG] Final filtered data: {'Test Column': 'test message'}
+[DEBUG] EXTRACTION SUMMARY:
+[DEBUG]   LLM returned: ['Test Column']
+[DEBUG]   After validation: ['Test Column']
+[DEBUG]   Rejected fields: []
+[DEBUG] LLM extraction returned: {'Test Column': 'test message'}
+[DEBUG] Type of extracted_data: <class 'dict'>
+[DEBUG] Checking if extracted_data has values: extracted_data={'Test Column': 'test message'}
+[DEBUG] extracted_data bool: True
+[DEBUG] extracted_data.values(): ['test message']
+[DEBUG] any(extracted_data.values()): True
+[DEBUG] Writing extracted data to samples: {'Test Column': 'test message'}
+DEBUG: Writing to table 'samples'
+DEBUG: Data to write: {'Test Column': 'test message', 'created_at': '2025-08-12T10:32:56.921393', 'confidence': 0.9}
+DEBUG: Full URL: https://suiqpfnvfadscyvtgcjz.supabase.co/rest/v1/samples
+Error writing to database: HTTPSConnectionPool(host='suiqpfnvfadscyvtgcjz.supabase.co', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10a8097f0>: Failed to resolve 'suiqpfnvfadscyvtgcjz.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+[DEBUG] Database write result: {'success': False, 'error': 'Error writing to database: HTTPSConnectionPool(host=\'suiqpfnvfadscyvtgcjz.supabase.co\', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10a8097f0>: Failed to resolve \'suiqpfnvfadscyvtgcjz.supabase.co\' ([Errno 8] nodename nor servname provided, or not known)"))'}
+INFO:     127.0.0.1:57843 - "POST /text/process HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'voice_agent.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [81269]
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "ProjectResponse" shadows an attribute in parent "ProjectBase"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "AgentState" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "SchemaAnalysisResponse" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+INFO:voice_agent:VoiceAgent initialized successfully
+INFO:voice_agent:VoiceAgent initialized successfully
+INFO:     Started server process [94156]
+INFO:     Waiting for application startup.
+INFO:main:Starting Chert API server...
+INFO:main:Services initialized successfully
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [94156]
+INFO:     Stopping reloader process [81265]
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "ProjectResponse" shadows an attribute in parent "ProjectBase"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "AgentState" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "SchemaAnalysisResponse" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+INFO:voice_agent:VoiceAgent initialized successfully
+/Users/garygao/Desktop/chertapp/backend/main.py:49: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Will watch for changes in these directories: ['/Users/garygao/Desktop/chertapp/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [94333] using StatReload
+[DEBUG] VoiceAgent initialized successfully
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "ProjectResponse" shadows an attribute in parent "ProjectBase"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "AgentState" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+/Users/garygao/Desktop/chertapp/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_fields.py:198: UserWarning: Field name "schema" in "SchemaAnalysisResponse" shadows an attribute in parent "BaseModel"
+  warnings.warn(
+INFO:voice_agent:VoiceAgent initialized successfully
+INFO:voice_agent:VoiceAgent initialized successfully
+INFO:     Started server process [94338]
+INFO:     Waiting for application startup.
+INFO:main:Starting Chert API server...
+INFO:main:Services initialized successfully
+INFO:     Application startup complete.
+INFO:main:Processing text input for project KlFNBbbjdi5Yee05t0qW: I want to record a new lobby with 50 oh and 5 mm height, thanks!
+INFO:main:Raw project_schema parameter: {"dataColumns":["Item ID","Location","Description","Measurement (mm)","Status","Notes"],"columnAnnotations":{},"generalAnnotations":"","csvMetadata":{"totalRows":5,"fileSize":458,"fileName":"architecture_punchlist_sample.csv","sampleRows":["1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door","2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile","3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint"]}}
+INFO:main:Type of project_schema: <class 'str'>
+INFO:main:✅ Successfully parsed project schema: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+INFO:voice_agent:Processing text input: 'I want to record a new lobby with 50 oh and 5 mm height, thanks!'
+INFO:voice_agent:🔍 get_project_schema_from_firebase called with:
+INFO:voice_agent:  project_id: KlFNBbbjdi5Yee05t0qW
+INFO:voice_agent:  provided_schema: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+INFO:voice_agent:  provided_schema type: <class 'dict'>
+INFO:voice_agent:✅ Using provided schema for project KlFNBbbjdi5Yee05t0qW
+INFO:voice_agent:📊 Found dataColumns: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:📊 Number of dataColumns: 6
+INFO:voice_agent:  ➕ Added column: Item ID (text)
+INFO:voice_agent:  ➕ Added column: Location (text)
+INFO:voice_agent:  ➕ Added column: Description (text)
+INFO:voice_agent:  ➕ Added column: Measurement (mm) (numeric)
+INFO:voice_agent:  ➕ Added column: Status (text)
+INFO:voice_agent:  ➕ Added column: Notes (text)
+INFO:voice_agent:Adding sample data: ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile']...
+INFO:voice_agent:✅ Generated schema with 9 columns
+INFO:voice_agent:📋 Data column names for LLM: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:Retrieved schema: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Item ID', 'type': 'text', 'description': 'Item ID field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Location', 'type': 'text', 'description': 'Location field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Description', 'type': 'text', 'description': 'Description field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Measurement (mm)', 'type': 'numeric', 'description': 'Measurement (mm) field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Status', 'type': 'text', 'description': 'Status field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Notes', 'type': 'text', 'description': 'Notes field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}]}
+INFO:voice_agent:Raw project schema from frontend: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+INFO:voice_agent:Using direct LLM extraction with project schema
+INFO:voice_agent:About to call _extract_with_llm with text: 'I want to record a new lobby with 50 oh and 5 mm height, thanks!'
+INFO:voice_agent:Schema being passed: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Item ID', 'type': 'text', 'description': 'Item ID field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Location', 'type': 'text', 'description': 'Location field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Description', 'type': 'text', 'description': 'Description field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Measurement (mm)', 'type': 'numeric', 'description': 'Measurement (mm) field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Status', 'type': 'text', 'description': 'Status field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Notes', 'type': 'text', 'description': 'Notes field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}]}
+INFO:voice_agent:🔍 LLM extraction schema analysis:
+INFO:voice_agent:  Total columns: 9
+[DEBUG] VoiceAgent initialized successfully
+[DEBUG] VoiceAgent initialized successfully
+[DEBUG] Processing text input: 'I want to record a new lobby with 50 oh and 5 mm height, thanks!'
+[DEBUG] 🔍 get_project_schema_from_firebase called with:
+[DEBUG]   project_id: KlFNBbbjdi5Yee05t0qW
+[DEBUG]   provided_schema: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+[DEBUG]   provided_schema type: <class 'dict'>
+[DEBUG] ✅ Using provided schema for project KlFNBbbjdi5Yee05t0qW
+[DEBUG] 📊 Found dataColumns: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG] 📊 Number of dataColumns: 6
+[DEBUG]   ➕ Added column: Item ID (text)
+[DEBUG]   ➕ Added column: Location (text)
+[DEBUG]   ➕ Added column: Description (text)
+[DEBUG]   ➕ Added column: Measurement (mm) (numeric)
+[DEBUG]   ➕ Added column: Status (text)
+[DEBUG]   ➕ Added column: Notes (text)
+[DEBUG] Adding sample data: ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile']...
+[DEBUG] ✅ Generated schema with 9 columns
+[DEBUG] 📋 Data column names for LLM: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG] Retrieved schema: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Item ID', 'type': 'text', 'description': 'Item ID field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Location', 'type': 'text', 'description': 'Location field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Description', 'type': 'text', 'description': 'Description field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Measurement (mm)', 'type': 'numeric', 'description': 'Measurement (mm) field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Status', 'type': 'text', 'description': 'Status field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Notes', 'type': 'text', 'description': 'Notes field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}]}
+[DEBUG] Raw project schema from frontend: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+[DEBUG] Using direct LLM extraction with project schema
+[DEBUG] About to call _extract_with_llm with text: 'I want to record a new lobby with 50 oh and 5 mm height, thanks!'
+[DEBUG] Schema being passed: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Item ID', 'type': 'text', 'description': 'Item ID field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Location', 'type': 'text', 'description': 'Location field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Description', 'type': 'text', 'description': 'Description field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Measurement (mm)', 'type': 'numeric', 'description': 'Measurement (mm) field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Status', 'type': 'text', 'description': 'Status field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Notes', 'type': 'text', 'description': 'Notes field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}]}
+[DEBUG] 🔍 LLM extraction schema analysis:
+[DEBUG]   Total columns: 9
+INFO:voice_agent:  Data columns (non-auto): 6
+INFO:voice_agent:  Data column names: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:Calling LLM with prompt of length: 1527
+INFO:voice_agent:================================================================================
+INFO:voice_agent:FULL LLM PROMPT:
+INFO:voice_agent:Extract structured data from the following text into the specified schema.
+
+Extract data for these fields (use EXACT field names in JSON):
+- "Item ID" (text): Item ID field
+- "Location" (text): Location field
+- "Description" (text): Description field
+- "Measurement (mm)" (numeric): Measurement (mm) field
+- "Status" (text): Status field
+- "Notes" (text): Notes field
+
+
+Example data rows:
+Example 1: 1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door
+Example 2: 2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile
+Example 3: 3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint
+
+
+CRITICAL INSTRUCTIONS:
+- Use EXACT field names as shown above (including spaces, special characters, and capitalization)
+- Valid field names: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+- IMPORTANT: Match capitalization exactly - "Notes" not "notes", "Location" not "location"
+- For numeric fields, extract numbers only (no units in the value)
+- For measurements, convert to consistent units (mm for length measurements)
+- If a field is not mentioned in the text, omit it from the output
+- Return ONLY valid JSON with the exact field names specified above
+- DO NOT create any field names that are not in the valid field names list
+
+Text to analyze: "I want to record a new lobby with 50 oh and 5 mm height, thanks!"
+
+Return the extracted data as JSON with exact field names (remember: case matters!):
+INFO:voice_agent:================================================================================
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:voice_agent:LLM call successful, response type: <class 'langchain_core.messages.ai.AIMessage'>
+INFO:voice_agent:================================================================================
+INFO:voice_agent:FULL LLM RESPONSE:
+INFO:voice_agent:```json
+{
+    "Location": "lobby",
+    "Measurement (mm)": 5
+}
+```
+INFO:voice_agent:================================================================================
+INFO:voice_agent:Valid fields from schema: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:LLM returned fields: ['Location', 'Measurement (mm)']
+INFO:voice_agent:Case-insensitive field mapping: {'item id': 'Item ID', 'location': 'Location', 'description': 'Description', 'measurement (mm)': 'Measurement (mm)', 'status': 'Status', 'notes': 'Notes'}
+INFO:voice_agent:✅ Accepted field (exact match): Location = lobby
+INFO:voice_agent:✅ Accepted field (exact match): Measurement (mm) = 5
+INFO:voice_agent:Final filtered data: {'Location': 'lobby', 'Measurement (mm)': 5}
+INFO:voice_agent:EXTRACTION SUMMARY:
+INFO:voice_agent:  LLM returned: ['Location', 'Measurement (mm)']
+INFO:voice_agent:  After validation: ['Location', 'Measurement (mm)']
+INFO:voice_agent:  Rejected fields: []
+INFO:voice_agent:LLM extraction returned: {'Location': 'lobby', 'Measurement (mm)': 5}
+INFO:voice_agent:Type of extracted_data: <class 'dict'>
+INFO:voice_agent:Checking if extracted_data has values: extracted_data={'Location': 'lobby', 'Measurement (mm)': 5}
+INFO:voice_agent:extracted_data bool: True
+INFO:voice_agent:extracted_data.values(): ['lobby', 5]
+INFO:voice_agent:any(extracted_data.values()): True
+INFO:voice_agent:Writing extracted data to samples: {'Location': 'lobby', 'Measurement (mm)': 5}
+INFO:voice_agent:Database write result: {'success': False, 'error': 'Error writing to database: HTTPSConnectionPool(host=\'suiqpfnvfadscyvtgcjz.supabase.co\', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10bb352b0>: Failed to resolve \'suiqpfnvfadscyvtgcjz.supabase.co\' ([Errno 8] nodename nor servname provided, or not known)"))'}
+INFO:main:Text processing completed: transcription='I want to record a new lobby with 50 oh and 5 mm height, thanks!' extracted_data={'Location': 'lobby', 'Measurement (mm)': 5} confidence=0.9 suggested_fields=[] reasoning="Extracted data: {'Location': 'lobby', 'Measurement (mm)': 5}, but database write failed" commit_id=None workflow_plan={'steps': ['transcribe', 'extract_data', 'store_in_database'], 'status': 'partial', 'database_result': {'success': False, 'error': 'Error writing to database: HTTPSConnectionPool(host=\'suiqpfnvfadscyvtgcjz.supabase.co\', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10bb352b0>: Failed to resolve \'suiqpfnvfadscyvtgcjz.supabase.co\' ([Errno 8] nodename nor servname provided, or not known)"))'}} tool_events=None
+[DEBUG]   Data columns (non-auto): 6
+[DEBUG]   Data column names: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG] Calling LLM with prompt of length: 1527
+[DEBUG] ================================================================================
+[DEBUG] FULL LLM PROMPT:
+[DEBUG] Extract structured data from the following text into the specified schema.
+
+Extract data for these fields (use EXACT field names in JSON):
+- "Item ID" (text): Item ID field
+- "Location" (text): Location field
+- "Description" (text): Description field
+- "Measurement (mm)" (numeric): Measurement (mm) field
+- "Status" (text): Status field
+- "Notes" (text): Notes field
+
+
+Example data rows:
+Example 1: 1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door
+Example 2: 2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile
+Example 3: 3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint
+
+
+CRITICAL INSTRUCTIONS:
+- Use EXACT field names as shown above (including spaces, special characters, and capitalization)
+- Valid field names: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+- IMPORTANT: Match capitalization exactly - "Notes" not "notes", "Location" not "location"
+- For numeric fields, extract numbers only (no units in the value)
+- For measurements, convert to consistent units (mm for length measurements)
+- If a field is not mentioned in the text, omit it from the output
+- Return ONLY valid JSON with the exact field names specified above
+- DO NOT create any field names that are not in the valid field names list
+
+Text to analyze: "I want to record a new lobby with 50 oh and 5 mm height, thanks!"
+
+Return the extracted data as JSON with exact field names (remember: case matters!):
+[DEBUG] ================================================================================
+[DEBUG] LLM call successful, response type: <class 'langchain_core.messages.ai.AIMessage'>
+[DEBUG] ================================================================================
+[DEBUG] FULL LLM RESPONSE:
+[DEBUG] ```json
+{
+    "Location": "lobby",
+    "Measurement (mm)": 5
+}
+```
+[DEBUG] ================================================================================
+[DEBUG] Valid fields from schema: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG] LLM returned fields: ['Location', 'Measurement (mm)']
+[DEBUG] Case-insensitive field mapping: {'item id': 'Item ID', 'location': 'Location', 'description': 'Description', 'measurement (mm)': 'Measurement (mm)', 'status': 'Status', 'notes': 'Notes'}
+[DEBUG] ✅ Accepted field (exact match): Location = lobby
+[DEBUG] ✅ Accepted field (exact match): Measurement (mm) = 5
+[DEBUG] Final filtered data: {'Location': 'lobby', 'Measurement (mm)': 5}
+[DEBUG] EXTRACTION SUMMARY:
+[DEBUG]   LLM returned: ['Location', 'Measurement (mm)']
+[DEBUG]   After validation: ['Location', 'Measurement (mm)']
+[DEBUG]   Rejected fields: []
+[DEBUG] LLM extraction returned: {'Location': 'lobby', 'Measurement (mm)': 5}
+[DEBUG] Type of extracted_data: <class 'dict'>
+[DEBUG] Checking if extracted_data has values: extracted_data={'Location': 'lobby', 'Measurement (mm)': 5}
+[DEBUG] extracted_data bool: True
+[DEBUG] extracted_data.values(): ['lobby', 5]
+[DEBUG] any(extracted_data.values()): True
+[DEBUG] Writing extracted data to samples: {'Location': 'lobby', 'Measurement (mm)': 5}
+DEBUG: Writing to table 'samples'
+DEBUG: Data to write: {'Location': 'lobby', 'Measurement (mm)': 5, 'created_at': '2025-08-12T10:41:54.166838', 'confidence': 0.9}
+DEBUG: Full URL: https://suiqpfnvfadscyvtgcjz.supabase.co/rest/v1/samples
+Error writing to database: HTTPSConnectionPool(host='suiqpfnvfadscyvtgcjz.supabase.co', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10bb352b0>: Failed to resolve 'suiqpfnvfadscyvtgcjz.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+[DEBUG] Database write result: {'success': False, 'error': 'Error writing to database: HTTPSConnectionPool(host=\'suiqpfnvfadscyvtgcjz.supabase.co\', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10bb352b0>: Failed to resolve \'suiqpfnvfadscyvtgcjz.supabase.co\' ([Errno 8] nodename nor servname provided, or not known)"))'}
+INFO:     127.0.0.1:61500 - "POST /text/process HTTP/1.1" 200 OK
+INFO:main:Saving audio file as: temp_audio_cfc1c64e-229e-42f0-8f6d-4d4437200d38.m4a (original: recording.m4a)
+INFO:main:Audio file saved: /var/folders/6w/_5rp36r16c71dr4x4qn6k7xm0000gn/T/temp_audio_cfc1c64e-229e-42f0-8f6d-4d4437200d38.m4a, size: 105263 bytes
+INFO:main:Received project schema: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+INFO:voice_agent:Transcribing audio file: /var/folders/6w/_5rp36r16c71dr4x4qn6k7xm0000gn/T/temp_audio_cfc1c64e-229e-42f0-8f6d-4d4437200d38.m4a
+INFO:voice_agent:File size: 105263 bytes, Extension: .m4a
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/audio/transcriptions "HTTP/1.1 200 OK"
+INFO:voice_agent:Transcription successful, length: 61 characters
+INFO:voice_agent:Processing text input: 'I want to record a new lobby with 50 kilograms and 5 meters.
+'
+INFO:voice_agent:🔍 get_project_schema_from_firebase called with:
+INFO:voice_agent:  project_id: KlFNBbbjdi5Yee05t0qW
+INFO:voice_agent:  provided_schema: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+INFO:voice_agent:  provided_schema type: <class 'dict'>
+INFO:voice_agent:✅ Using provided schema for project KlFNBbbjdi5Yee05t0qW
+INFO:voice_agent:📊 Found dataColumns: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:📊 Number of dataColumns: 6
+INFO:voice_agent:  ➕ Added column: Item ID (text)
+INFO:voice_agent:  ➕ Added column: Location (text)
+INFO:voice_agent:  ➕ Added column: Description (text)
+INFO:voice_agent:  ➕ Added column: Measurement (mm) (numeric)
+INFO:voice_agent:  ➕ Added column: Status (text)
+INFO:voice_agent:  ➕ Added column: Notes (text)
+INFO:voice_agent:Adding sample data: ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile']...
+INFO:voice_agent:✅ Generated schema with 9 columns
+INFO:voice_agent:📋 Data column names for LLM: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:Retrieved schema: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Item ID', 'type': 'text', 'description': 'Item ID field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Location', 'type': 'text', 'description': 'Location field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Description', 'type': 'text', 'description': 'Description field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Measurement (mm)', 'type': 'numeric', 'description': 'Measurement (mm) field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Status', 'type': 'text', 'description': 'Status field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Notes', 'type': 'text', 'description': 'Notes field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}]}
+INFO:voice_agent:Raw project schema from frontend: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+INFO:voice_agent:Using direct LLM extraction with project schema
+INFO:voice_agent:About to call _extract_with_llm with text: 'I want to record a new lobby with 50 kilograms and 5 meters.
+'
+INFO:voice_agent:Schema being passed: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Item ID', 'type': 'text', 'description': 'Item ID field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Location', 'type': 'text', 'description': 'Location field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Description', 'type': 'text', 'description': 'Description field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Measurement (mm)', 'type': 'numeric', 'description': 'Measurement (mm) field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Status', 'type': 'text', 'description': 'Status field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Notes', 'type': 'text', 'description': 'Notes field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}]}
+INFO:voice_agent:🔍 LLM extraction schema analysis:
+INFO:voice_agent:  Total columns: 9
+INFO:voice_agent:  Data columns (non-auto): 6
+INFO:voice_agent:  Data column names: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG] Processing text input: 'I want to record a new lobby with 50 kilograms and 5 meters.
+'
+[DEBUG] 🔍 get_project_schema_from_firebase called with:
+[DEBUG]   project_id: KlFNBbbjdi5Yee05t0qW
+[DEBUG]   provided_schema: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+[DEBUG]   provided_schema type: <class 'dict'>
+[DEBUG] ✅ Using provided schema for project KlFNBbbjdi5Yee05t0qW
+[DEBUG] 📊 Found dataColumns: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG] 📊 Number of dataColumns: 6
+[DEBUG]   ➕ Added column: Item ID (text)
+[DEBUG]   ➕ Added column: Location (text)
+[DEBUG]   ➕ Added column: Description (text)
+[DEBUG]   ➕ Added column: Measurement (mm) (numeric)
+[DEBUG]   ➕ Added column: Status (text)
+[DEBUG]   ➕ Added column: Notes (text)
+[DEBUG] Adding sample data: ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile']...
+[DEBUG] ✅ Generated schema with 9 columns
+[DEBUG] 📋 Data column names for LLM: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG] Retrieved schema: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Item ID', 'type': 'text', 'description': 'Item ID field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Location', 'type': 'text', 'description': 'Location field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Description', 'type': 'text', 'description': 'Description field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Measurement (mm)', 'type': 'numeric', 'description': 'Measurement (mm) field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Status', 'type': 'text', 'description': 'Status field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Notes', 'type': 'text', 'description': 'Notes field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}]}
+[DEBUG] Raw project schema from frontend: {'dataColumns': ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes'], 'columnAnnotations': {}, 'generalAnnotations': '', 'csvMetadata': {'totalRows': 5, 'fileSize': 458, 'fileName': 'architecture_punchlist_sample.csv', 'sampleRows': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}}
+[DEBUG] Using direct LLM extraction with project schema
+[DEBUG] About to call _extract_with_llm with text: 'I want to record a new lobby with 50 kilograms and 5 meters.
+'
+[DEBUG] Schema being passed: {'table_name': 'samples', 'columns': [{'name': 'id', 'type': 'uuid', 'description': 'Primary key', 'required': False, 'auto': True}, {'name': 'created_at', 'type': 'timestamp', 'description': 'Record creation time', 'required': False, 'auto': True}, {'name': 'confidence', 'type': 'numeric', 'description': 'AI confidence score', 'required': False, 'auto': True}, {'name': 'Item ID', 'type': 'text', 'description': 'Item ID field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Location', 'type': 'text', 'description': 'Location field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Description', 'type': 'text', 'description': 'Description field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Measurement (mm)', 'type': 'numeric', 'description': 'Measurement (mm) field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Status', 'type': 'text', 'description': 'Status field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}, {'name': 'Notes', 'type': 'text', 'description': 'Notes field', 'required': True, 'auto': False, 'sample_data': ['1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door', '2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile', '3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint']}]}
+[DEBUG] 🔍 LLM extraction schema analysis:
+[DEBUG]   Total columns: 9
+[DEBUG]   Data columns (non-auto): 6
+[DEBUG]   Data column names: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']INFO:voice_agent:Calling LLM with prompt of length: 1524
+INFO:voice_agent:================================================================================
+INFO:voice_agent:FULL LLM PROMPT:
+INFO:voice_agent:Extract structured data from the following text into the specified schema.
+
+Extract data for these fields (use EXACT field names in JSON):
+- "Item ID" (text): Item ID field
+- "Location" (text): Location field
+- "Description" (text): Description field
+- "Measurement (mm)" (numeric): Measurement (mm) field
+- "Status" (text): Status field
+- "Notes" (text): Notes field
+
+
+Example data rows:
+Example 1: 1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door
+Example 2: 2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile
+Example 3: 3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint
+
+
+CRITICAL INSTRUCTIONS:
+- Use EXACT field names as shown above (including spaces, special characters, and capitalization)
+- Valid field names: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+- IMPORTANT: Match capitalization exactly - "Notes" not "notes", "Location" not "location"
+- For numeric fields, extract numbers only (no units in the value)
+- For measurements, convert to consistent units (mm for length measurements)
+- If a field is not mentioned in the text, omit it from the output
+- Return ONLY valid JSON with the exact field names specified above
+- DO NOT create any field names that are not in the valid field names list
+
+Text to analyze: "I want to record a new lobby with 50 kilograms and 5 meters.
+"
+
+Return the extracted data as JSON with exact field names (remember: case matters!):
+INFO:voice_agent:================================================================================
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:voice_agent:LLM call successful, response type: <class 'langchain_core.messages.ai.AIMessage'>
+INFO:voice_agent:================================================================================
+INFO:voice_agent:FULL LLM RESPONSE:
+INFO:voice_agent:```json
+{
+    "Item ID": "1",
+    "Location": "Lobby",
+    "Description": "New lobby",
+    "Measurement (mm)": 5000,
+    "Status": "Open",
+    "Notes": "50 kilograms"
+}
+```
+INFO:voice_agent:================================================================================
+INFO:voice_agent:Valid fields from schema: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:LLM returned fields: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:Case-insensitive field mapping: {'item id': 'Item ID', 'location': 'Location', 'description': 'Description', 'measurement (mm)': 'Measurement (mm)', 'status': 'Status', 'notes': 'Notes'}
+INFO:voice_agent:✅ Accepted field (exact match): Item ID = 1
+INFO:voice_agent:✅ Accepted field (exact match): Location = Lobby
+INFO:voice_agent:✅ Accepted field (exact match): Description = New lobby
+INFO:voice_agent:✅ Accepted field (exact match): Measurement (mm) = 5000
+INFO:voice_agent:✅ Accepted field (exact match): Status = Open
+INFO:voice_agent:✅ Accepted field (exact match): Notes = 50 kilograms
+INFO:voice_agent:Final filtered data: {'Item ID': '1', 'Location': 'Lobby', 'Description': 'New lobby', 'Measurement (mm)': 5000, 'Status': 'Open', 'Notes': '50 kilograms'}
+INFO:voice_agent:EXTRACTION SUMMARY:
+INFO:voice_agent:  LLM returned: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:  After validation: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+INFO:voice_agent:  Rejected fields: []
+INFO:voice_agent:LLM extraction returned: {'Item ID': '1', 'Location': 'Lobby', 'Description': 'New lobby', 'Measurement (mm)': 5000, 'Status': 'Open', 'Notes': '50 kilograms'}
+INFO:voice_agent:Type of extracted_data: <class 'dict'>
+INFO:voice_agent:Checking if extracted_data has values: extracted_data={'Item ID': '1', 'Location': 'Lobby', 'Description': 'New lobby', 'Measurement (mm)': 5000, 'Status': 'Open', 'Notes': '50 kilograms'}
+INFO:voice_agent:extracted_data bool: True
+INFO:voice_agent:extracted_data.values(): ['1', 'Lobby', 'New lobby', 5000, 'Open', '50 kilograms']
+INFO:voice_agent:any(extracted_data.values()): True
+INFO:voice_agent:Writing extracted data to samples: {'Item ID': '1', 'Location': 'Lobby', 'Description': 'New lobby', 'Measurement (mm)': 5000, 'Status': 'Open', 'Notes': '50 kilograms'}
+INFO:voice_agent:Database write result: {'success': False, 'error': 'Error writing to database: HTTPSConnectionPool(host=\'suiqpfnvfadscyvtgcjz.supabase.co\', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10bb61e50>: Failed to resolve \'suiqpfnvfadscyvtgcjz.supabase.co\' ([Errno 8] nodename nor servname provided, or not known)"))'}
+
+[DEBUG] Calling LLM with prompt of length: 1524
+[DEBUG] ================================================================================
+[DEBUG] FULL LLM PROMPT:
+[DEBUG] Extract structured data from the following text into the specified schema.
+
+Extract data for these fields (use EXACT field names in JSON):
+- "Item ID" (text): Item ID field
+- "Location" (text): Location field
+- "Description" (text): Description field
+- "Measurement (mm)" (numeric): Measurement (mm) field
+- "Status" (text): Status field
+- "Notes" (text): Notes field
+
+
+Example data rows:
+Example 1: 1 | Lobby - Main Entrance | Door frame misaligned | 12.5 | Open | Adjust hinges to align door
+Example 2: 2 | Conference Room A | Ceiling tile missing |  | Open | Replace with acoustic tile
+Example 3: 3 | Office 204 | Paint chipped on wall | 45.0 | In Progress | Touch-up with matching paint
+
+
+CRITICAL INSTRUCTIONS:
+- Use EXACT field names as shown above (including spaces, special characters, and capitalization)
+- Valid field names: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+- IMPORTANT: Match capitalization exactly - "Notes" not "notes", "Location" not "location"
+- For numeric fields, extract numbers only (no units in the value)
+- For measurements, convert to consistent units (mm for length measurements)
+- If a field is not mentioned in the text, omit it from the output
+- Return ONLY valid JSON with the exact field names specified above
+- DO NOT create any field names that are not in the valid field names list
+
+Text to analyze: "I want to record a new lobby with 50 kilograms and 5 meters.
+"
+
+Return the extracted data as JSON with exact field names (remember: case matters!):
+[DEBUG] ================================================================================
+[DEBUG] LLM call successful, response type: <class 'langchain_core.messages.ai.AIMessage'>
+[DEBUG] ================================================================================
+[DEBUG] FULL LLM RESPONSE:
+[DEBUG] ```json
+{
+    "Item ID": "1",
+    "Location": "Lobby",
+    "Description": "New lobby",
+    "Measurement (mm)": 5000,
+    "Status": "Open",
+    "Notes": "50 kilograms"
+}
+```
+[DEBUG] ================================================================================
+[DEBUG] Valid fields from schema: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG] LLM returned fields: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG] Case-insensitive field mapping: {'item id': 'Item ID', 'location': 'Location', 'description': 'Description', 'measurement (mm)': 'Measurement (mm)', 'status': 'Status', 'notes': 'Notes'}
+[DEBUG] ✅ Accepted field (exact match): Item ID = 1
+[DEBUG] ✅ Accepted field (exact match): Location = Lobby
+[DEBUG] ✅ Accepted field (exact match): Description = New lobby
+[DEBUG] ✅ Accepted field (exact match): Measurement (mm) = 5000
+[DEBUG] ✅ Accepted field (exact match): Status = Open
+[DEBUG] ✅ Accepted field (exact match): Notes = 50 kilograms
+[DEBUG] Final filtered data: {'Item ID': '1', 'Location': 'Lobby', 'Description': 'New lobby', 'Measurement (mm)': 5000, 'Status': 'Open', 'Notes': '50 kilograms'}
+[DEBUG] EXTRACTION SUMMARY:
+[DEBUG]   LLM returned: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG]   After validation: ['Item ID', 'Location', 'Description', 'Measurement (mm)', 'Status', 'Notes']
+[DEBUG]   Rejected fields: []
+[DEBUG] LLM extraction returned: {'Item ID': '1', 'Location': 'Lobby', 'Description': 'New lobby', 'Measurement (mm)': 5000, 'Status': 'Open', 'Notes': '50 kilograms'}
+[DEBUG] Type of extracted_data: <class 'dict'>
+[DEBUG] Checking if extracted_data has values: extracted_data={'Item ID': '1', 'Location': 'Lobby', 'Description': 'New lobby', 'Measurement (mm)': 5000, 'Status': 'Open', 'Notes': '50 kilograms'}
+[DEBUG] extracted_data bool: True
+[DEBUG] extracted_data.values(): ['1', 'Lobby', 'New lobby', 5000, 'Open', '50 kilograms']
+[DEBUG] any(extracted_data.values()): True
+[DEBUG] Writing extracted data to samples: {'Item ID': '1', 'Location': 'Lobby', 'Description': 'New lobby', 'Measurement (mm)': 5000, 'Status': 'Open', 'Notes': '50 kilograms'}
+DEBUG: Writing to table 'samples'
+DEBUG: Data to write: {'Item ID': '1', 'Location': 'Lobby', 'Description': 'New lobby', 'Measurement (mm)': 5000, 'Status': 'Open', 'Notes': '50 kilograms', 'created_at': '2025-08-12T10:43:03.022153', 'confidence': 0.9}
+DEBUG: Full URL: https://suiqpfnvfadscyvtgcjz.supabase.co/rest/v1/samples
+Error writing to database: HTTPSConnectionPool(host='suiqpfnvfadscyvtgcjz.supabase.co', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10bb61e50>: Failed to resolve 'suiqpfnvfadscyvtgcjz.supabase.co' ([Errno 8] nodename nor servname provided, or not known)"))
+[DEBUG] Database write result: {'success': False, 'error': 'Error writing to database: HTTPSConnectionPool(host=\'suiqpfnvfadscyvtgcjz.supabase.co\', port=443): Max retries exceeded with url: /rest/v1/samples (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10bb61e50>: Failed to resolve \'suiqpfnvfadscyvtgcjz.supabase.co\' ([Errno 8] nodename nor servname provided, or not known)"))'}
+INFO:     127.0.0.1:61912 - "POST /voice/process HTTP/1.1" 200 OK

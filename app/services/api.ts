@@ -2,8 +2,8 @@
 import type { Project, DataRecord, RecentActivity } from '../types';
 import { supabase } from './supabase';
 
-// Use hardcoded production API URL
-const API_URL = 'https://chert-backend-d92c4cd51927.herokuapp.com';
+// Use local development API URL for testing
+const API_URL = 'http://localhost:8000';
 
 // API service for backend integration
 export class ApiService {
@@ -199,7 +199,7 @@ export class ApiService {
   }
 
   // AI/Voice Processing - Mobile compatible version
-  static async processVoiceInputMobile(fileInfo: { uri: string; type: string; name: string }, projectId: string): Promise<{
+  static async processVoiceInputMobile(fileInfo: { uri: string; type: string; name: string }, projectId: string, projectSchema?: any): Promise<{
     transcription: string;
     extracted_data: Record<string, any>;
     confidence: number;
@@ -222,6 +222,12 @@ export class ApiService {
       } as any);
       
       formData.append('project_id', projectId);
+      
+      // Add project schema if available
+      if (projectSchema) {
+        formData.append('project_schema', JSON.stringify(projectSchema));
+        console.log('📋 Including project schema:', projectSchema);
+      }
       
       console.log('📋 Mobile FormData prepared with:');
       console.log('  - audio_file:', fileInfo.name, 'URI:', fileInfo.uri);
@@ -365,7 +371,7 @@ export class ApiService {
   }
 
   // Text Processing - Process text input through the AI agent
-  static async processTextInput(text: string, projectId: string): Promise<{
+  static async processTextInput(text: string, projectId: string, projectSchema?: any): Promise<{
     transcription: string;
     extracted_data: Record<string, any>;
     confidence: number;
@@ -381,6 +387,12 @@ export class ApiService {
       const formData = new FormData();
       formData.append('text', text);
       formData.append('project_id', projectId);
+      
+      // Add project schema if available
+      if (projectSchema) {
+        formData.append('project_schema', JSON.stringify(projectSchema));
+        console.log('📋 Including project schema for text processing:', projectSchema);
+      }
       
       console.log('📋 FormData prepared with:');
       console.log('  - text:', text);

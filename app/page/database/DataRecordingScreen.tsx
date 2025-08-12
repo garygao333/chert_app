@@ -304,8 +304,30 @@ export default function DataRecordingScreen() {
           console.log('📤 Sending audio file to backend...');
           console.log('📁 File info:', fileInfo);
           
+          // Get project schema and send with voice request
+          let projectSchema = null;
+          if (project) {
+            projectSchema = {
+              dataColumns: project.dataColumns || [],
+              columnAnnotations: project.columnAnnotations || {},
+              generalAnnotations: project.generalAnnotations || '',
+              csvMetadata: project.csvMetadata || null
+            };
+            console.log('📋 Project loaded:', {
+              id: project.id,
+              name: project.name,
+              dataColumns: project.dataColumns,
+              columnAnnotations: project.columnAnnotations,
+              generalAnnotations: project.generalAnnotations,
+              csvMetadata: project.csvMetadata
+            });
+            console.log('📋 Sending project schema:', projectSchema);
+          } else {
+            console.log('❌ No project loaded for schema');
+          }
+          
           // Process with voice agent using mobile file object
-          const result = await ApiService.processVoiceInputMobile(fileInfo, projectId);
+          const result = await ApiService.processVoiceInputMobile(fileInfo, projectId, projectSchema);
           
           const userMessage: ConversationMessage = {
             id: generateMessageId('user'),
@@ -385,8 +407,19 @@ export default function DataRecordingScreen() {
     setConversation(prev => [...prev, userMessage]);
     
     try {
+      // Get project schema for text processing too
+      let projectSchema = null;
+      if (project) {
+        projectSchema = {
+          dataColumns: project.dataColumns || [],
+          columnAnnotations: project.columnAnnotations || {},
+          generalAnnotations: project.generalAnnotations || '',
+          csvMetadata: project.csvMetadata || null
+        };
+      }
+      
       // Process text through the backend
-      const result = await ApiService.processTextInput(message, projectId);
+      const result = await ApiService.processTextInput(message, projectId, projectSchema);
       
       // Always show the LLM response if we have reasoning
       let assistantContent = '';
@@ -571,12 +604,20 @@ export default function DataRecordingScreen() {
     return '#F44336';
   };
 
-  // Get all unique column headers from recorded samples
+  // Get all unique column headers from recorded samples and project schema
   const getAllColumnHeaders = () => {
     const headers = new Set(['timestamp', 'confidence']);
+    
+    // Add headers from project schema if available
+    if (project && project.dataColumns) {
+      project.dataColumns.forEach(column => headers.add(column));
+    }
+    
+    // Add headers from actual recorded data
     recordedSamples.forEach(sample => {
       Object.keys(sample.fields).forEach(key => headers.add(key));
     });
+    
     return Array.from(headers);
   };
 

@@ -147,7 +147,8 @@ async def create_data_record(project_id: str, record: DataRecordCreate):
 async def process_voice_input(
     audio_file: UploadFile = File(..., description="Audio file to process"),
     project_id: str = Form(..., description="Project ID"),
-    context: Optional[str] = Form(None, description="Optional context")
+    context: Optional[str] = Form(None, description="Optional context"),
+    project_schema: Optional[str] = Form(None, description="Project schema JSON")
 ):
     """Process voice input using the LangGraph agent"""
     try:
@@ -193,11 +194,21 @@ async def process_voice_input(
         
         logger.info(f"Audio file saved: {temp_path}, size: {len(content)} bytes")
         
+        # Parse project schema if provided
+        parsed_schema = None
+        if project_schema:
+            try:
+                parsed_schema = json.loads(project_schema)
+                logger.info(f"Received project schema: {parsed_schema}")
+            except json.JSONDecodeError as e:
+                logger.warning(f"Invalid project schema JSON: {e}")
+        
         # Process with voice agent
         result = await voice_agent.process_voice_input(
             project_id=project_id.strip(),
             audio_file_path=temp_path,
-            context=context
+            context=context,
+            project_schema=parsed_schema
         )
         
         # Clean up temp file
@@ -218,11 +229,29 @@ async def process_voice_input(
 async def process_text_input(
     text: str = Form(...),
     project_id: str = Form(...),
-    context: Optional[str] = Form(None)
+    context: Optional[str] = Form(None),
+    project_schema: Optional[str] = Form(None, description="Project schema JSON")
 ):
     """Process text input using the LangGraph agent"""
     try:
         logger.info(f"Processing text input for project {project_id}: {text}")
+        
+        # Parse project schema if provided
+        parsed_schema = None
+        logger.info(f"Raw project_schema parameter: {project_schema}")
+        logger.info(f"Type of project_schema: {type(project_schema)}")
+        if project_schema:
+            try:
+                parsed_schema = json.loads(project_schema)
+                logger.info(f"✅ Successfully parsed project schema: {parsed_schema}")
+            except json.JSONDecodeError as e:
+                logger.warning(f"❌ Invalid project schema JSON: {e}")
+        else:
+            logger.warning(f"❌ No project_schema provided in request")
+        
+        # Store schema in voice agent for text processing
+        voice_agent.project_id = project_id.strip()
+        voice_agent.project_schema = parsed_schema
         
         # Process with voice agent (reusing the voice agent's text processing capability)
         result = await voice_agent._process_text_input(text, context)

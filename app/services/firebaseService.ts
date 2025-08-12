@@ -420,61 +420,79 @@ class FirebaseService {
       const user = auth.currentUser;
       if (!user) throw new Error('User not authenticated');
 
-      // Get current project
-      const projectRef = doc(db, 'projects', projectId);
-      const projectDoc = await getDoc(projectRef);
-      
-      if (!projectDoc.exists()) {
-        throw new Error('Project not found');
-      }
+      console.log(`DEBUG: Looking for project_csvs document for project ${projectId}, user ${user.uid}`);
 
-      const project = projectDoc.data() as Project;
-      let currentCSV = project.csvContent || '';
+      // Find existing project_csvs document
+      const q = query(
+        collection(db, 'project_csvs'),
+        where('projectId', '==', projectId),
+        where('userId', '==', user.uid)
+      );
       
-      // If no CSV exists, create header from dataColumns
-      if (!currentCSV && project.dataColumns) {
-        const csvHeader = project.dataColumns.join(',');
-        currentCSV = csvHeader + '\n';
-      }
-
-      // Convert records to CSV rows
-      const csvRows: string[] = [];
-      const columns = project.dataColumns || [];
+      const querySnapshot = await getDocs(q);
+      console.log(`DEBUG: Found ${querySnapshot.size} project_csvs documents`);
       
-      records.forEach(record => {
-        const row = columns.map(column => {
-          const value = record[column] || '';
-          // Escape quotes and wrap in quotes if contains comma or quote
-          const stringValue = String(value);
-          if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-            return `"${stringValue.replace(/"/g, '""')}"`;
+      if (querySnapshot.empty) {
+        console.log('DEBUG: No project_csvs document found, attempting to create one...');
+        
+        // Try to get project to initialize CSV
+        const project = await this.getProject(projectId);
+        if (project && project.dataColumns) {
+          console.log('DEBUG: Creating project_csvs document with columns:', project.dataColumns);
+          const success = await this.initializeProjectCSV(projectId, project.dataColumns);
+          if (!success) {
+            throw new Error('Failed to initialize project CSV');
           }
-          return stringValue;
-        }).join(',');
-        csvRows.push(row);
+        } else {
+          throw new Error('Project not found or has no dataColumns');
+        }
+      }
+      
+      // Get the document (either existing or newly created)
+      const finalQuerySnapshot = await getDocs(q);
+      if (finalQuerySnapshot.empty) {
+        throw new Error('Project CSV document still not found after initialization');
+      }
+
+      const csvDoc = finalQuerySnapshot.docs[0];
+      const csvData = csvDoc.data();
+      
+      console.log('DEBUG: CSV document data:', csvData);
+      
+      // Convert records to row format matching the columns
+      const newRows = records.map(record => {
+        const row: Record<string, any> = {};
+        csvData.columns.forEach((column: string) => {
+          row[column] = record[column] || '';
+        });
+        // Add timestamp and confidence if they exist
+        if (record.timestamp) row.timestamp = record.timestamp;
+        if (record.confidence !== undefined) row.confidence = record.confidence;
+        return row;
       });
 
-      // Append new rows to CSV
-      const newCSV = currentCSV + csvRows.join('\n') + '\n';
-      
-      // Calculate new metadata
-      const totalRows = (project.csvMetadata?.totalRows || 0) + records.length;
-      const sampleRows = [
-        ...(project.csvMetadata?.sampleRows || []),
-        ...csvRows.slice(0, 5 - (project.csvMetadata?.sampleRows?.length || 0))
-      ].slice(0, 5); // Keep only first 5 sample rows
+      console.log('DEBUG: New rows to add:', newRows);
 
-      // Update project with new CSV data
-      await updateDoc(projectRef, {
-        csvContent: newCSV,
-        csvMetadata: {
-          totalRows,
-          fileName: `${projectId}_data.csv`,
-          fileSize: newCSV.length,
-          sampleRows,
-          lastUpdated: new Date()
-        },
+      // Append to existing rows
+      const updatedRows = [...(csvData.rows || []), ...newRows];
+      console.log('DEBUG: Updated rows array length:', updatedRows.length);
+
+      // Update the document
+      await updateDoc(doc(db, 'project_csvs', csvDoc.id), {
+        rows: updatedRows,
         updatedAt: new Date()
+      });
+      
+      console.log('DEBUG: Successfully updated project_csvs document');
+
+      // Create commit log entry
+      await addDoc(collection(db, 'commit_logs'), {
+        projectId,
+        userId: user.uid,
+        action: 'sync_local_data',
+        recordsAdded: records.length,
+        timestamp: new Date(),
+        description: `Synced ${records.length} local records to project CSV`
       });
 
       console.log(`Appended ${records.length} records to project ${projectId} CSV`);

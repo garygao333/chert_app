@@ -79,20 +79,6 @@ export default function DashboardScreen() {
           
           <TouchableOpacity 
             style={styles.actionCard}
-            onPress={() => navigation.navigate('CreateProject')}
-          >
-            <View style={styles.actionIconContainer}>
-              <Ionicons name="add-circle-outline" size={32} color="#EF9144" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Create New Project</Text>
-              <Text style={styles.actionDescription}>Start a new data collection project</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="rgba(37, 51, 94, 0.4)" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionCard}
             onPress={() => navigation.jumpTo('Projects')}
           >
             <View style={styles.actionIconContainer}>

@@ -204,12 +204,6 @@ export default function ProjectsScreen() {
             <TouchableOpacity style={styles.searchButton}>
               <Ionicons name="search" size={20} color="#666" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => navigation.navigate('CreateProject')}
-            >
-              <Ionicons name="add" size={20} color="#666" />
-            </TouchableOpacity>
           </View>
         </View>
       </View>

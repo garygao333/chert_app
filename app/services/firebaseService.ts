@@ -134,7 +134,15 @@ class FirebaseService {
         updatedAt: new Date(),
       });
 
-      return docRef.id;
+      const projectId = docRef.id;
+
+      // Initialize empty CSV if project has dataColumns
+      if (projectData.dataColumns && projectData.dataColumns.length > 0) {
+        console.log(`Initializing CSV for new project ${projectId} with columns:`, projectData.dataColumns);
+        await this.initializeProjectCSV(projectId, projectData.dataColumns);
+      }
+
+      return projectId;
     } catch (error) {
       console.error('Error creating project:', error);
       return null;
@@ -370,6 +378,128 @@ class FirebaseService {
     } catch (error) {
       console.error('Error deleting data record:', error);
       return false;
+    }
+  }
+
+  // CSV Storage Methods
+  
+  // Initialize empty CSV for a project
+  async initializeProjectCSV(projectId: string, columns: string[]): Promise<boolean> {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+
+      // Create CSV header row
+      const csvHeader = columns.join(',');
+      const csvData = csvHeader + '\n'; // Start with header and newline
+
+      // Update project with CSV data
+      const projectRef = doc(db, 'projects', projectId);
+      await updateDoc(projectRef, {
+        csvContent: csvData,
+        csvMetadata: {
+          totalRows: 0, // No data rows yet, just header
+          fileName: `${projectId}_data.csv`,
+          fileSize: csvData.length,
+          sampleRows: [], // No sample rows yet
+          lastUpdated: new Date()
+        }
+      });
+
+      console.log(`Initialized CSV for project ${projectId} with columns:`, columns);
+      return true;
+    } catch (error) {
+      console.error('Error initializing project CSV:', error);
+      return false;
+    }
+  }
+
+  // Append data rows to project CSV
+  async appendToProjectCSV(projectId: string, records: Array<Record<string, any>>): Promise<boolean> {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+
+      // Get current project
+      const projectRef = doc(db, 'projects', projectId);
+      const projectDoc = await getDoc(projectRef);
+      
+      if (!projectDoc.exists()) {
+        throw new Error('Project not found');
+      }
+
+      const project = projectDoc.data() as Project;
+      let currentCSV = project.csvContent || '';
+      
+      // If no CSV exists, create header from dataColumns
+      if (!currentCSV && project.dataColumns) {
+        const csvHeader = project.dataColumns.join(',');
+        currentCSV = csvHeader + '\n';
+      }
+
+      // Convert records to CSV rows
+      const csvRows: string[] = [];
+      const columns = project.dataColumns || [];
+      
+      records.forEach(record => {
+        const row = columns.map(column => {
+          const value = record[column] || '';
+          // Escape quotes and wrap in quotes if contains comma or quote
+          const stringValue = String(value);
+          if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+            return `"${stringValue.replace(/"/g, '""')}"`;
+          }
+          return stringValue;
+        }).join(',');
+        csvRows.push(row);
+      });
+
+      // Append new rows to CSV
+      const newCSV = currentCSV + csvRows.join('\n') + '\n';
+      
+      // Calculate new metadata
+      const totalRows = (project.csvMetadata?.totalRows || 0) + records.length;
+      const sampleRows = [
+        ...(project.csvMetadata?.sampleRows || []),
+        ...csvRows.slice(0, 5 - (project.csvMetadata?.sampleRows?.length || 0))
+      ].slice(0, 5); // Keep only first 5 sample rows
+
+      // Update project with new CSV data
+      await updateDoc(projectRef, {
+        csvContent: newCSV,
+        csvMetadata: {
+          totalRows,
+          fileName: `${projectId}_data.csv`,
+          fileSize: newCSV.length,
+          sampleRows,
+          lastUpdated: new Date()
+        },
+        updatedAt: new Date()
+      });
+
+      console.log(`Appended ${records.length} records to project ${projectId} CSV`);
+      return true;
+    } catch (error) {
+      console.error('Error appending to project CSV:', error);
+      return false;
+    }
+  }
+
+  // Get CSV content for download
+  async getProjectCSV(projectId: string): Promise<string | null> {
+    try {
+      const projectRef = doc(db, 'projects', projectId);
+      const projectDoc = await getDoc(projectRef);
+      
+      if (!projectDoc.exists()) {
+        throw new Error('Project not found');
+      }
+
+      const project = projectDoc.data() as Project;
+      return project.csvContent || null;
+    } catch (error) {
+      console.error('Error getting project CSV:', error);
+      return null;
     }
   }
 }

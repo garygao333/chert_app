@@ -17,6 +17,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { Project } from '../../types';
 import FirebaseService from '../../services/firebaseService';
@@ -86,6 +87,50 @@ export default function DataRecordingScreen() {
 
   const { projectId, tableName } = route.params;
   const [project, setProject] = useState<Project | null>(null);
+
+  // Storage key for persisting local data table per project
+  const STORAGE_KEY = `recorded_samples_${projectId}`;
+
+  // Load persisted data on component mount
+  useEffect(() => {
+    loadPersistedSamples();
+  }, [projectId]);
+
+  // Save samples to storage whenever recordedSamples changes
+  useEffect(() => {
+    savePersistedSamples();
+  }, [recordedSamples]);
+
+  const loadPersistedSamples = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const samples = JSON.parse(stored);
+        setRecordedSamples(samples);
+        console.log(`Loaded ${samples.length} persisted samples for project ${projectId}`);
+      }
+    } catch (error) {
+      console.error('Failed to load persisted samples:', error);
+    }
+  };
+
+  const savePersistedSamples = async () => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(recordedSamples));
+    } catch (error) {
+      console.error('Failed to save samples:', error);
+    }
+  };
+
+  const clearPersistedSamples = async () => {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      setRecordedSamples([]);
+      console.log('Cleared persisted samples');
+    } catch (error) {
+      console.error('Failed to clear samples:', error);
+    }
+  };
 
   // Load project details
   useEffect(() => {
@@ -372,6 +417,8 @@ export default function DataRecordingScreen() {
           // Update current record only if we have extracted data
           if (result.extracted_data && Object.keys(result.extracted_data).length > 0) {
             updateCurrentRecord(result.extracted_data, result.confidence);
+            // Auto-commit the record immediately
+            await autoCommitRecord(result.extracted_data, result.confidence);
           }
         } catch (error) {
           console.error('Audio processing failed:', error);
@@ -451,6 +498,8 @@ export default function DataRecordingScreen() {
       // Update current record only if we have extracted data
       if (result.extracted_data && Object.keys(result.extracted_data).length > 0) {
         updateCurrentRecord(result.extracted_data, result.confidence);
+        // Auto-commit the record immediately
+        await autoCommitRecord(result.extracted_data, result.confidence);
       }
     } catch (error) {
       console.error('Text processing failed:', error);
@@ -485,6 +534,58 @@ export default function DataRecordingScreen() {
     } catch (error) {
       console.error('Photo error:', error);
       Alert.alert('Photo Error', 'Failed to add photo');
+    }
+  };
+
+  // Auto-commit function for immediate saving
+  const autoCommitRecord = async (extractedData: any, confidence: number) => {
+    try {
+      console.log('Auto-committing extracted data:', extractedData);
+      
+      // Convert extracted data to current record format
+      const recordFields = Object.entries(extractedData).map(([key, value]) => ({
+        name: key,
+        value: String(value),
+        confidence: confidence,
+        source: 'voice' as const
+      }));
+      
+      // Create a sample record for the CSV table
+      const sampleFields: { [key: string]: string } = {};
+      recordFields.forEach(field => {
+        sampleFields[field.name] = field.value;
+      });
+      
+      const newSample: RecordedSample = {
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        fields: sampleFields,
+        confidence: confidence,
+      };
+      
+      // Add to recorded samples
+      setRecordedSamples(prev => {
+        const updated = [...prev, newSample];
+        console.log('Auto-committed sample added:', newSample);
+        return updated;
+      });
+      
+      // Add success message to conversation
+      const successMessage: ConversationMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'system',
+        content: `✅ Auto-saved! Added ${Object.keys(extractedData).length} fields to local data table.`,
+        timestamp: new Date(),
+        metadata: { recordingMethod: 'auto-commit' }
+      };
+      
+      setConversation(prev => [...prev, successMessage]);
+      
+      // Clear current record since it's been committed
+      setCurrentRecord([]);
+      
+    } catch (error) {
+      console.error('Auto-commit failed:', error);
     }
   };
 

@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList, Project } from '../../types/index.js';
 import FirebaseService from '../../services/firebaseService';
@@ -22,6 +24,31 @@ export default function ProjectsScreen() {
   const [searchText, setSearchText] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [projectsWithLocalData, setProjectsWithLocalData] = useState<Set<string>>(new Set());
+
+  // Check for local data across all projects
+  const checkLocalData = async () => {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const recordedSampleKeys = keys.filter(key => key.startsWith('recorded_samples_'));
+      const projectIds = new Set<string>();
+      
+      for (const key of recordedSampleKeys) {
+        const projectId = key.replace('recorded_samples_', '');
+        const stored = await AsyncStorage.getItem(key);
+        if (stored) {
+          const samples = JSON.parse(stored);
+          if (samples && samples.length > 0) {
+            projectIds.add(projectId);
+          }
+        }
+      }
+      
+      setProjectsWithLocalData(projectIds);
+    } catch (error) {
+      console.error('Failed to check local data:', error);
+    }
+  };
 
   const loadProjects = async () => {
     try {
@@ -35,10 +62,55 @@ export default function ProjectsScreen() {
     }
   };
 
+  // Merge local data to Firebase CSV
+  const mergeLocalDataToFirebase = async (projectId: string) => {
+    try {
+      const key = `recorded_samples_${projectId}`;
+      const stored = await AsyncStorage.getItem(key);
+      if (!stored) return;
+      
+      const samples = JSON.parse(stored);
+      if (!samples || samples.length === 0) return;
+      
+      console.log(`Merging ${samples.length} local samples to Firebase CSV for project ${projectId}`);
+      
+      // Convert local samples to records format for CSV
+      const records = samples.map((sample: any) => ({
+        timestamp: new Date(sample.timestamp).toISOString(),
+        confidence: sample.confidence,
+        ...sample.fields // Include all the extracted fields
+      }));
+      
+      // Append to Firebase CSV
+      const success = await FirebaseService.appendToProjectCSV(projectId, records);
+      
+      if (success) {
+        // Clear local data after successful merge
+        await AsyncStorage.removeItem(key);
+        
+        Alert.alert(
+          'Sync Complete',
+          `Successfully synced ${samples.length} records to project CSV in Firebase.`,
+          [{ text: 'OK' }]
+        );
+        
+        // Refresh local data check
+        await checkLocalData();
+      } else {
+        throw new Error('Failed to append to Firebase CSV');
+      }
+      
+    } catch (error) {
+      console.error('Failed to merge data:', error);
+      Alert.alert('Sync Failed', 'Failed to sync local data to Firebase CSV.');
+    }
+  };
+
   // Load data when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       loadProjects();
+      checkLocalData();
     }, [])
   );
 
@@ -216,6 +288,27 @@ export default function ProjectsScreen() {
                   end={{ x: 1, y: 0 }}
                 />
               </View>
+
+              {/* Merge Local Data Button */}
+              {projectsWithLocalData.has(project.id) && (
+                <TouchableOpacity
+                  style={styles.mergeButton}
+                  onPress={(e) => {
+                    e.stopPropagation(); // Prevent card navigation
+                    Alert.alert(
+                      'Sync to Project CSV', 
+                      'You have unsynced local data for this project. Would you like to add it to the project CSV in Firebase?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Sync to CSV', onPress: () => mergeLocalDataToFirebase(project.id) }
+                      ]
+                    );
+                  }}
+                >
+                  <Ionicons name="cloud-upload-outline" size={16} color="#3B82F6" />
+                  <Text style={styles.mergeButtonText}>Sync to CSV</Text>
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
           ))
         )}
@@ -413,5 +506,21 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 5,
     textAlign: 'center',
+  },
+  mergeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 6,
+  },
+  mergeButtonText: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontWeight: '600',
   },
 });

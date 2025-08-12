@@ -7,10 +7,15 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
+  Alert,
+  Share,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList, RecentActivity, Project } from '../types/index.js';
@@ -37,6 +42,12 @@ const projectActions = [
     title: 'Data Schema Config',
     icon: 'grid-outline',
     description: 'Configure data fields and validation',
+  },
+  {
+    id: 'export-csv',
+    title: 'Export CSV',
+    icon: 'download-outline',
+    description: 'Download project data as CSV file',
   },
 ];
 
@@ -115,6 +126,38 @@ export default function ProjectDetailScreen() {
     }
   };
 
+  const exportCSV = async () => {
+    try {
+      if (!project) return;
+      
+      Alert.alert('Exporting CSV...', 'Getting your project data');
+      
+      const csvContent = await FirebaseService.getProjectCSV(projectId);
+      
+      if (!csvContent) {
+        Alert.alert('No Data', 'This project has no CSV data to export.');
+        return;
+      }
+      
+      const fileName = `${project.name.replace(/[^a-zA-Z0-9]/g, '_')}_data.csv`;
+      const fileUri = FileSystem.documentDirectory + fileName;
+      
+      // Write CSV content to file
+      await FileSystem.writeAsStringAsync(fileUri, csvContent);
+      
+      // Share the file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
+      } else {
+        Alert.alert('Export Complete', `CSV saved to: ${fileName}`);
+      }
+      
+    } catch (error) {
+      console.error('CSV export error:', error);
+      Alert.alert('Export Failed', 'Failed to export CSV data.');
+    }
+  };
+
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
       case 'data-logs':
@@ -125,6 +168,9 @@ export default function ProjectDetailScreen() {
         break;
       case 'data-schema':
         navigation.navigate('DataSchemaConfig', { projectId });
+        break;
+      case 'export-csv':
+        exportCSV();
         break;
     }
   };

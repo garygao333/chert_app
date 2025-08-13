@@ -556,6 +556,83 @@ class FirebaseService {
     }
   }
 
+  // Get project analytics
+  async getProjectAnalytics(projectId: string): Promise<Record<string, any>> {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('User not authenticated');
+
+      console.log(`DEBUG: Getting analytics for project ${projectId}, user ${user.uid}`);
+
+      // Get project_csvs data
+      const q = query(
+        collection(db, 'project_csvs'),
+        where('projectId', '==', projectId),
+        where('userId', '==', user.uid)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        return {
+          totalRecords: 0,
+          uniqueValues: {},
+          fieldCompleteness: {},
+          recentActivity: [],
+          topValues: {}
+        };
+      }
+
+      const csvData = querySnapshot.docs[0].data();
+      const rows = csvData.rows || [];
+      const columns = csvData.columns || [];
+
+      // Calculate analytics
+      const analytics = {
+        totalRecords: rows.length,
+        uniqueValues: {} as Record<string, number>,
+        fieldCompleteness: {} as Record<string, number>,
+        topValues: {} as Record<string, Array<{value: string, count: number}>>,
+        recentActivity: rows.slice(-5).reverse() // Last 5 entries
+      };
+
+      // Calculate field statistics
+      columns.forEach((column: string) => {
+        if (column === 'timestamp' || column === 'confidence') return;
+
+        const values = rows.map((row: any) => row[column]).filter(v => v && v !== '');
+        const uniqueVals = new Set(values);
+        
+        analytics.uniqueValues[column] = uniqueVals.size;
+        analytics.fieldCompleteness[column] = Math.round((values.length / rows.length) * 100);
+
+        // Get top 3 values for each field
+        const valueCounts: Record<string, number> = {};
+        values.forEach(val => {
+          const strVal = String(val);
+          valueCounts[strVal] = (valueCounts[strVal] || 0) + 1;
+        });
+
+        analytics.topValues[column] = Object.entries(valueCounts)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 3)
+          .map(([value, count]) => ({ value, count }));
+      });
+
+      console.log(`DEBUG: Analytics calculated:`, analytics);
+      return analytics;
+    } catch (error) {
+      console.error('Error getting project analytics:', error);
+      return {
+        totalRecords: 0,
+        uniqueValues: {},
+        fieldCompleteness: {},
+        recentActivity: [],
+        topValues: {}
+      };
+    }
+  }
+
   // Get first 5 samples from project CSV
   async getProjectSamples(projectId: string): Promise<Array<Record<string, any>>> {
     try {

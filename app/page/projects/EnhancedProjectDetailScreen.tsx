@@ -37,6 +37,7 @@ export default function EnhancedProjectDetailScreen() {
   const [activeTab, setActiveTab] = useState<'log' | 'insights' | 'details'>('log');
   const [commitLogs, setCommitLogs] = useState<Array<Record<string, any>>>([]);
   const [projectSamples, setProjectSamples] = useState<Array<Record<string, any>>>([]);
+  const [analytics, setAnalytics] = useState<Record<string, any>>({});
   const [activeFilter, setActiveFilter] = useState<'all' | 'voice' | 'camera' | 'today'>('all');
   const [searchText, setSearchText] = useState('');
 
@@ -45,6 +46,7 @@ export default function EnhancedProjectDetailScreen() {
     loadRecords();
     loadCommitLogs();
     loadProjectSamples();
+    loadAnalytics();
   }, [projectId]);
 
   const loadProject = async () => {
@@ -72,6 +74,15 @@ export default function EnhancedProjectDetailScreen() {
       setProjectSamples(samples);
     } catch (error) {
       console.error('Error loading project samples:', error);
+    }
+  };
+
+  const loadAnalytics = async () => {
+    try {
+      const analyticsData = await FirebaseService.getProjectAnalytics(projectId);
+      setAnalytics(analyticsData);
+    } catch (error) {
+      console.error('Error loading analytics:', error);
     }
   };
 
@@ -446,37 +457,175 @@ export default function EnhancedProjectDetailScreen() {
 
       {activeTab === 'insights' && (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {projectSamples.length === 0 ? (
+          {analytics.totalRecords === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyStateIcon}>
                 <Ionicons name="bar-chart-outline" size={64} color="#E5E7EB" />
               </View>
-              <Text style={styles.emptyStateText}>No data samples</Text>
+              <Text style={styles.emptyStateText}>No data for analytics</Text>
               <Text style={styles.emptyStateSubtext}>
-                Start recording data to see insights here
+                Start recording data to see insights and analytics
               </Text>
             </View>
           ) : (
-            <View style={styles.samplesContainer}>
-              <Text style={styles.samplesTitle}>Recent Data Samples</Text>
-              {projectSamples.map((sample, index) => (
-                <View key={index} style={styles.sampleItem}>
-                  {Object.entries(sample).map(([key, value]) => (
-                    key !== 'timestamp' && key !== 'confidence' && (
-                      <View key={key} style={styles.sampleField}>
-                        <Text style={styles.sampleFieldName}>{key}:</Text>
-                        <Text style={styles.sampleFieldValue}>{String(value)}</Text>
-                      </View>
-                    )
-                  ))}
-                  {sample.timestamp && (
-                    <Text style={styles.sampleTimestamp}>
-                      {new Date(sample.timestamp).toLocaleDateString()}
+            <>
+              {/* Overview Statistics */}
+              <View style={styles.analyticsSection}>
+                <Text style={styles.analyticsSectionTitle}>Data Overview</Text>
+                <View style={styles.statsGrid}>
+                  <View style={styles.statCard}>
+                    <View style={[styles.statIconContainer, { backgroundColor: '#DCFCE7' }]}>
+                      <Ionicons name="documents-outline" size={24} color="#10B981" />
+                    </View>
+                    <Text style={styles.statNumber}>{analytics.totalRecords || 0}</Text>
+                    <Text style={styles.statLabel}>Total Records</Text>
+                  </View>
+                  
+                  <View style={styles.statCard}>
+                    <View style={[styles.statIconContainer, { backgroundColor: '#DBEAFE' }]}>
+                      <Ionicons name="grid-outline" size={24} color="#3B82F6" />
+                    </View>
+                    <Text style={styles.statNumber}>
+                      {Object.keys(analytics.uniqueValues || {}).length}
                     </Text>
+                    <Text style={styles.statLabel}>Data Fields</Text>
+                  </View>
+
+                  <View style={styles.statCard}>
+                    <View style={[styles.statIconContainer, { backgroundColor: '#EDE9FE' }]}>
+                      <Ionicons name="checkmark-circle-outline" size={24} color="#8B5CF6" />
+                    </View>
+                    <Text style={styles.statNumber}>
+                      {analytics.fieldCompleteness && Object.keys(analytics.fieldCompleteness).length > 0 ? 
+                        Math.round((Object.values(analytics.fieldCompleteness || {}) as number[]).reduce((a: number, b: number) => a + b, 0) / Object.keys(analytics.fieldCompleteness).length) 
+                        : 0}%
+                    </Text>
+                    <Text style={styles.statLabel}>Avg Completeness</Text>
+                  </View>
+
+                  <View style={styles.statCard}>
+                    <View style={[styles.statIconContainer, { backgroundColor: '#FEF3E2' }]}>
+                      <Ionicons name="trending-up-outline" size={24} color="#EF9144" />
+                    </View>
+                    <Text style={styles.statNumber}>
+                      {analytics.uniqueValues ? (Object.values(analytics.uniqueValues || {}) as number[]).reduce((a: number, b: number) => a + b, 0) : 0}
+                    </Text>
+                    <Text style={styles.statLabel}>Unique Values</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Field Completeness */}
+              <View style={styles.analyticsSection}>
+                <Text style={styles.analyticsSectionTitle}>Field Completeness</Text>
+                <View style={styles.analyticsCard}>
+                  {Object.keys(analytics.fieldCompleteness || {}).length === 0 ? (
+                    <View style={styles.emptyAnalyticsCard}>
+                      <Ionicons name="bar-chart-outline" size={32} color="#D1D5DB" />
+                      <Text style={styles.emptyAnalyticsText}>No field data available</Text>
+                    </View>
+                  ) : (
+                    Object.entries(analytics.fieldCompleteness || {}).map(([field, percentage]) => (
+                      <View key={field} style={styles.fieldCompletenessItem}>
+                        <View style={styles.fieldCompletenessHeader}>
+                          <Text style={styles.fieldName}>{field}</Text>
+                          <View style={styles.percentageBadge}>
+                            <Text style={styles.percentageText}>{percentage}%</Text>
+                          </View>
+                        </View>
+                        <View style={styles.progressBar}>
+                          <View 
+                            style={[
+                              styles.progressFill, 
+                              { 
+                                width: `${percentage}%`, 
+                                backgroundColor: (percentage as number) >= 80 ? '#10B981' : (percentage as number) >= 50 ? '#EF9144' : '#EF4444' 
+                              }
+                            ]}
+                          />
+                        </View>
+                        <View style={styles.fieldStats}>
+                          <Text style={styles.fieldStatsText}>
+                            {analytics.uniqueValues?.[field] || 0} unique values
+                          </Text>
+                        </View>
+                      </View>
+                    ))
                   )}
                 </View>
-              ))}
-            </View>
+              </View>
+
+              {/* Top Values */}
+              <View style={styles.analyticsSection}>
+                <Text style={styles.analyticsSectionTitle}>Most Common Values</Text>
+                <View style={styles.analyticsCard}>
+                  {Object.keys(analytics.topValues || {}).length === 0 ? (
+                    <View style={styles.emptyAnalyticsCard}>
+                      <Ionicons name="list-outline" size={32} color="#D1D5DB" />
+                      <Text style={styles.emptyAnalyticsText}>No common values data</Text>
+                    </View>
+                  ) : (
+                    Object.entries(analytics.topValues || {}).map(([field, values]: [string, any]) => (
+                      values && values.length > 0 && (
+                        <View key={field} style={styles.topValuesField}>
+                          <Text style={styles.topValuesFieldName}>{field}</Text>
+                          {values.slice(0, 3).map((item: any, index: number) => (
+                            <View key={index} style={styles.topValueItem}>
+                              <View style={styles.topValueRank}>
+                                <Text style={styles.topValueRankText}>{index + 1}</Text>
+                              </View>
+                              <Text style={styles.topValueText}>{item.value}</Text>
+                              <View style={styles.topValueBadge}>
+                                <Text style={styles.topValueCount}>{item.count}</Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )
+                    ))
+                  )}
+                </View>
+              </View>
+
+              {/* Recent Activity */}
+              <View style={styles.analyticsSection}>
+                <Text style={styles.analyticsSectionTitle}>Recent Entries</Text>
+                <View style={styles.analyticsCard}>
+                  {!analytics.recentActivity || analytics.recentActivity.length === 0 ? (
+                    <View style={styles.emptyAnalyticsCard}>
+                      <Ionicons name="time-outline" size={32} color="#D1D5DB" />
+                      <Text style={styles.emptyAnalyticsText}>No recent activity</Text>
+                    </View>
+                  ) : (
+                    (analytics.recentActivity || []).slice(0, 5).map((entry: any, index: number) => (
+                      <View key={index} style={styles.recentEntryItem}>
+                        <View style={styles.recentEntryHeader}>
+                          <View style={styles.recentEntryIconContainer}>
+                            <Ionicons name="document-text-outline" size={16} color="#6B7280" />
+                          </View>
+                          <Text style={styles.recentEntryTime}>
+                            {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : 'Recent'}
+                          </Text>
+                          <View style={styles.recentEntryIndex}>
+                            <Text style={styles.recentEntryIndexText}>#{index + 1}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.recentEntryContent}>
+                          {Object.entries(entry).map(([key, value]) => (
+                            key !== 'timestamp' && key !== 'confidence' && value && (
+                              <View key={key} style={styles.recentEntryField}>
+                                <Text style={styles.recentEntryLabel}>{key}:</Text>
+                                <Text style={styles.recentEntryValue}>{String(value)}</Text>
+                              </View>
+                            )
+                          ))}
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+              </View>
+            </>
           )}
           <View style={{ height: 80 }} />
         </ScrollView>
@@ -1019,5 +1168,217 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     paddingVertical: 20,
+  },
+  // Analytics Styles
+  analyticsSection: {
+    marginBottom: 20,
+  },
+  analyticsSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+    marginHorizontal: 4,
+  },
+  analyticsCard: {
+    backgroundColor: '#FAFBFC',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginHorizontal: 4,
+  },
+  statCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    width: '48%',
+    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  fieldCompletenessItem: {
+    marginBottom: 16,
+  },
+  fieldCompletenessHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  fieldName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+    flex: 1,
+  },
+  percentageBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  percentageText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  fieldStats: {
+    marginTop: 6,
+  },
+  fieldStatsText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
+  topValuesField: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  topValuesFieldName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  topValueItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    paddingVertical: 4,
+  },
+  topValueRank: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#EF9144',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  topValueRankText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'white',
+  },
+  topValueText: {
+    fontSize: 13,
+    color: '#374151',
+    flex: 1,
+    marginRight: 8,
+  },
+  topValueBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  topValueCount: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  recentEntryItem: {
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  recentEntryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recentEntryIconContainer: {
+    marginRight: 8,
+  },
+  recentEntryTime: {
+    fontSize: 12,
+    color: '#6B7280',
+    flex: 1,
+  },
+  recentEntryIndex: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  recentEntryIndexText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  recentEntryContent: {
+    marginLeft: 24,
+  },
+  recentEntryField: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  recentEntryLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    width: 80,
+  },
+  recentEntryValue: {
+    fontSize: 12,
+    color: '#374151',
+    flex: 1,
+  },
+  emptyAnalyticsCard: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyAnalyticsText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });

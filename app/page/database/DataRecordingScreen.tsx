@@ -82,10 +82,12 @@ export default function DataRecordingScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [workflowPlan, setWorkflowPlan] = useState<any>(null);
   const [recordedSamples, setRecordedSamples] = useState<RecordedSample[]>([]);
+  const [projectAnalytics, setProjectAnalytics] = useState<any>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const { projectId, tableName } = route.params;
+  const { projectId, tableName: _tableName } = route.params;
   const [project, setProject] = useState<Project | null>(null);
 
   // Storage key for persisting local data table per project
@@ -122,7 +124,7 @@ export default function DataRecordingScreen() {
     }
   };
 
-  const clearPersistedSamples = async () => {
+  const _clearPersistedSamples = async () => {
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
       setRecordedSamples([]);
@@ -139,6 +141,14 @@ export default function DataRecordingScreen() {
         try {
           const projectData = await FirebaseService.getProject(projectId);
           setProject(projectData);
+          
+          // Load analytics data
+          try {
+            const analyticsData = await FirebaseService.getProjectAnalytics(projectId);
+            setProjectAnalytics(analyticsData);
+          } catch (analyticsError) {
+            console.error('Error loading analytics:', analyticsError);
+          }
         } catch (error) {
           console.error('Error loading project:', error);
         }
@@ -512,7 +522,7 @@ export default function DataRecordingScreen() {
   const addPhoto = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images' as any,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
@@ -576,7 +586,7 @@ export default function DataRecordingScreen() {
         type: 'system',
         content: `✅ Auto-saved! Added ${Object.keys(extractedData).length} fields to local data table.`,
         timestamp: new Date(),
-        metadata: { recordingMethod: 'auto-commit' }
+        metadata: { confidence: confidence }
       };
       
       setConversation(prev => [...prev, successMessage]);
@@ -827,6 +837,72 @@ export default function DataRecordingScreen() {
         {/* CSV Table Area - Top Half */}
         {renderCSVTable()}
         
+        {/* Analytics Overlay */}
+        {showAnalytics && projectAnalytics && (
+          <View style={styles.analyticsOverlay}>
+            <View style={styles.analyticsCard}>
+              <View style={styles.analyticsHeader}>
+                <Text style={styles.analyticsTitle}>Project Analytics</Text>
+                <TouchableOpacity onPress={() => setShowAnalytics(false)}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.analyticsContent}>
+                <View style={styles.analyticsSection}>
+                  <Text style={styles.analyticsSectionTitle}>📊 Data Overview</Text>
+                  <Text style={styles.analyticsText}>• Total Records: {projectAnalytics.totalRecords}</Text>
+                  <Text style={styles.analyticsText}>• Data Fields: {Object.keys(projectAnalytics.fieldCompleteness || {}).length}</Text>
+                  {Object.keys(projectAnalytics.fieldCompleteness || {}).length > 0 && (
+                    <Text style={styles.analyticsText}>
+                      • Average Completeness: {Math.round(
+                        (Object.values(projectAnalytics.fieldCompleteness || {}) as number[]).reduce((a: number, b: number) => a + b, 0) / 
+                        Object.keys(projectAnalytics.fieldCompleteness || {}).length
+                      )}%
+                    </Text>
+                  )}
+                </View>
+                
+                {Object.keys(projectAnalytics.fieldCompleteness || {}).length > 0 && (
+                  <View style={styles.analyticsSection}>
+                    <Text style={styles.analyticsSectionTitle}>📈 Field Completeness</Text>
+                    {Object.entries(projectAnalytics.fieldCompleteness || {}).map(([field, completeness]: [string, any]) => (
+                      <View key={field} style={styles.fieldRow}>
+                        <Text style={styles.fieldName}>{field}</Text>
+                        <Text style={styles.fieldStats}>
+                          {completeness}% complete, {projectAnalytics.uniqueValues?.[field] || 0} unique
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                
+                {Object.keys(projectAnalytics.topValues || {}).length > 0 && (
+                  <View style={styles.analyticsSection}>
+                    <Text style={styles.analyticsSectionTitle}>🔝 Most Common Values</Text>
+                    {Object.entries(projectAnalytics.topValues || {}).map(([field, values]: [string, any]) => (
+                      values && values.length > 0 && (
+                        <View key={field} style={styles.fieldRow}>
+                          <Text style={styles.fieldName}>{field}</Text>
+                          <Text style={styles.fieldValues}>
+                            {values.slice(0, 3).map((v: any) => `${v.value} (${v.count})`).join(', ')}
+                          </Text>
+                        </View>
+                      )
+                    ))}
+                  </View>
+                )}
+                
+                <View style={styles.analyticsSection}>
+                  <Text style={styles.analyticsTip}>
+                    💡 Try saying "show me analytics" or "what are my statistics" while recording!
+                  </Text>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        )}
+        
         {/* Chat Area - Bottom Half */}
         <View style={styles.chatArea}>
           <ScrollView style={styles.conversation} showsVerticalScrollIndicator={false} contentContainerStyle={styles.conversationContent}>
@@ -884,7 +960,7 @@ export default function DataRecordingScreen() {
             style={styles.textInput}
             value={textInput}
             onChangeText={setTextInput}
-            placeholder="Ask about your data..."
+            placeholder="Record data or ask 'show analytics'..."
             multiline
             maxLength={500}
           />
@@ -910,9 +986,9 @@ export default function DataRecordingScreen() {
               <Text style={styles.bottomActionText}>Commit ({currentRecord.length})</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.bottomActionButton} onPress={() => {}}>
-              <Ionicons name="flask" size={20} color="#FF9800" />
-              <Text style={styles.bottomActionText}>Test AI</Text>
+            <TouchableOpacity style={styles.bottomActionButton} onPress={() => setShowAnalytics(!showAnalytics)}>
+              <Ionicons name="analytics" size={20} color="#FF9800" />
+              <Text style={styles.bottomActionText}>Analytics</Text>
             </TouchableOpacity>
           )}
           
@@ -1287,5 +1363,90 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     textAlign: 'center',
     flexWrap: 'wrap',
+  },
+  // Analytics Overlay Styles
+  analyticsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  analyticsCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    margin: 20,
+    maxHeight: '80%',
+    width: '90%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  analyticsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  analyticsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  analyticsContent: {
+    padding: 20,
+    maxHeight: 400,
+  },
+  analyticsSection: {
+    marginBottom: 20,
+  },
+  analyticsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  analyticsText: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  fieldRow: {
+    marginBottom: 8,
+  },
+  fieldName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  fieldStats: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  fieldValues: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  analyticsTip: {
+    fontSize: 14,
+    color: '#059669',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 20,
   },
 });

@@ -69,7 +69,7 @@ export default function DashboardScreen() {
           />
           <Text style={styles.welcomeTitle}>Chert</Text>
           <Text style={styles.welcomeSubtitle}>
-            Generalized plug-and-play voice & image conversational agent for human-in-the-loop field data recording
+            Voice agent for data recording
           </Text>
         </View>
 

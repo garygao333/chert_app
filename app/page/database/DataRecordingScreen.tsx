@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Audio } from 'expo-av';
+import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -84,6 +85,7 @@ export default function DataRecordingScreen() {
   const [recordedSamples, setRecordedSamples] = useState<RecordedSample[]>([]);
   const [projectAnalytics, setProjectAnalytics] = useState<any>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -122,6 +124,32 @@ export default function DataRecordingScreen() {
     } catch (error) {
       console.error('Failed to save samples:', error);
     }
+  };
+
+  // Text-to-speech function
+  const speakText = async (text: string) => {
+    if (isMuted || !text.trim()) return;
+    
+    try {
+      await Speech.speak(text, {
+        language: 'en-US',
+        pitch: 1.0,
+        rate: 0.9,
+      });
+    } catch (error) {
+      console.error('Text-to-speech error:', error);
+    }
+  };
+
+  const toggleMute = () => {
+    setIsMuted(prev => {
+      const newMutedState = !prev;
+      if (newMutedState) {
+        // Stop any current speech when muting
+        Speech.stop();
+      }
+      return newMutedState;
+    });
   };
 
   const _clearPersistedSamples = async () => {
@@ -193,7 +221,7 @@ export default function DataRecordingScreen() {
         const backendMessage: ConversationMessage = {
           id: generateMessageId('backend-status'),
           type: 'system',
-          content: `🔗 Backend connected successfully!\n\nServer: ${API_URL}\nStatus: ${data.status}\n\n✅ Voice AI agent is ready for mobile use!`,
+          content: `Backend connected successfully!\n\nServer: ${API_URL}\nStatus: ${data.status}\n\nVoice AI agent is ready for mobile use!`,
           timestamp: new Date(),
         };
         setConversation(prev => [...prev, backendMessage]);
@@ -203,7 +231,7 @@ export default function DataRecordingScreen() {
         const errorMessage: ConversationMessage = {
           id: generateMessageId('backend-error'),
           type: 'system',
-          content: `❌ Backend connection failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\n💡 Troubleshooting:\n• Make sure the backend server is running\n• Check if your device is on the same WiFi network\n• Try restarting the Expo development server`,
+          content: `Backend connection failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nTroubleshooting:\n• Make sure the backend server is running\n• Check if your device is on the same WiFi network\n• Try restarting the Expo development server`,
           timestamp: new Date(),
         };
         setConversation(prev => [...prev, errorMessage]);
@@ -424,6 +452,11 @@ export default function DataRecordingScreen() {
           
           setConversation(prev => [...prev, assistantMessage]);
           
+          // Speak the assistant's response if it's a question response
+          if (assistantContent && assistantContent.trim()) {
+            await speakText(assistantContent);
+          }
+          
           // Update current record only if we have extracted data
           if (result.extracted_data && Object.keys(result.extracted_data).length > 0) {
             updateCurrentRecord(result.extracted_data, result.confidence);
@@ -505,6 +538,11 @@ export default function DataRecordingScreen() {
       
       setConversation(prev => [...prev, assistantMessage]);
       
+      // Speak the assistant's response if it's a question response
+      if (assistantContent && assistantContent.trim()) {
+        await speakText(assistantContent);
+      }
+      
       // Update current record only if we have extracted data
       if (result.extracted_data && Object.keys(result.extracted_data).length > 0) {
         updateCurrentRecord(result.extracted_data, result.confidence);
@@ -584,7 +622,7 @@ export default function DataRecordingScreen() {
       const successMessage: ConversationMessage = {
         id: (Date.now() + 1).toString(),
         type: 'system',
-        content: `✅ Auto-saved! Added ${Object.keys(extractedData).length} fields to local data table.`,
+        content: `Auto-saved! Added ${Object.keys(extractedData).length} fields to local data table.`,
         timestamp: new Date(),
         metadata: { confidence: confidence }
       };
@@ -828,6 +866,18 @@ export default function DataRecordingScreen() {
               </Text>
             </View>
             <Ionicons name="chevron-down" size={20} color="#666" />
+          </TouchableOpacity>
+          
+          {/* Mute/Unmute Button */}
+          <TouchableOpacity 
+            style={[styles.muteButton, isMuted && styles.mutedButton]}
+            onPress={toggleMute}
+          >
+            <Ionicons 
+              name={isMuted ? "volume-mute" : "volume-high"} 
+              size={20} 
+              color={isMuted ? "#F44336" : "#4CAF50"} 
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -1074,6 +1124,26 @@ const styles = StyleSheet.create({
   projectType: {
     fontSize: 12,
     color: '#666',
+  },
+  muteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  mutedButton: {
+    backgroundColor: '#FFEBEE',
   },
   header: {
     backgroundColor: 'rgba(255, 248, 243, 0.95)', // Match container background

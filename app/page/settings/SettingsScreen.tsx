@@ -33,30 +33,6 @@ const settingsOptions: SettingOption[] = [
     description: 'Manage your account settings',
   },
   {
-    id: 'preferences',
-    title: 'Preferences',
-    icon: 'settings-outline',
-    description: 'App preferences and defaults',
-  },
-  {
-    id: 'storage',
-    title: 'Storage & Sync',
-    icon: 'cloud-outline',
-    description: 'Manage data storage and synchronization',
-  },
-  {
-    id: 'permissions',
-    title: 'Permissions',
-    icon: 'shield-checkmark-outline',
-    description: 'Camera, microphone, and location access',
-  },
-  {
-    id: 'export',
-    title: 'Export Data',
-    icon: 'download-outline',
-    description: 'Export your data and records',
-  },
-  {
     id: 'help',
     title: 'Help & Support',
     icon: 'help-circle-outline',
@@ -127,13 +103,7 @@ export default function SettingsScreen() {
       case 'help':
         Alert.alert(
           'Help & Support',
-          'For help with Chert, please visit our documentation or contact support at support@mergai.org'
-        );
-        break;
-      case 'permissions':
-        Alert.alert(
-          'Permissions',
-          'Chert requires camera, microphone, and location permissions for optimal data recording functionality.'
+          'For help with Chert, please visit our documentation or contact support at chert.main@gmail.com'
         );
         break;
       default:

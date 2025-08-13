@@ -69,7 +69,7 @@ export default function DashboardScreen() {
           />
           <Text style={styles.welcomeTitle}>Chert</Text>
           <Text style={styles.welcomeSubtitle}>
-            Voice agent for data recording
+            Voice agent for hands-free, conversational, and multimodal data collection
           </Text>
         </View>
 

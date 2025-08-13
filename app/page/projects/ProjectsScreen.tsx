@@ -106,6 +106,48 @@ export default function ProjectsScreen() {
     }
   };
 
+  // Delete local data without syncing
+  const deleteLocalData = async (projectId: string) => {
+    try {
+      const key = `recorded_samples_${projectId}`;
+      const stored = await AsyncStorage.getItem(key);
+      if (!stored) return;
+      
+      const samples = JSON.parse(stored);
+      if (!samples || samples.length === 0) return;
+      
+      Alert.alert(
+        'Delete Local Data',
+        `Are you sure you want to delete ${samples.length} local records? This action cannot be undone and the data will be permanently lost.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await AsyncStorage.removeItem(key);
+                Alert.alert(
+                  'Data Deleted',
+                  `Successfully deleted ${samples.length} local records.`,
+                  [{ text: 'OK' }]
+                );
+                // Refresh local data check
+                await checkLocalData();
+              } catch (error) {
+                console.error('Failed to delete local data:', error);
+                Alert.alert('Delete Failed', 'Failed to delete local data.');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Failed to delete local data:', error);
+      Alert.alert('Delete Failed', 'Failed to delete local data.');
+    }
+  };
+
   // Load data when screen is focused
   useFocusEffect(
     React.useCallback(() => {
@@ -283,25 +325,38 @@ export default function ProjectsScreen() {
                 />
               </View>
 
-              {/* Merge Local Data Button */}
+              {/* Local Data Action Buttons */}
               {projectsWithLocalData.has(project.id) && (
-                <TouchableOpacity
-                  style={styles.mergeButton}
-                  onPress={(e) => {
-                    e.stopPropagation(); // Prevent card navigation
-                    Alert.alert(
-                      'Sync to Project CSV', 
-                      'You have unsynced local data for this project. Would you like to add it to the project CSV in Firebase?',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Sync to CSV', onPress: () => mergeLocalDataToFirebase(project.id) }
-                      ]
-                    );
-                  }}
-                >
-                  <Ionicons name="cloud-upload-outline" size={16} color="#3B82F6" />
-                  <Text style={styles.mergeButtonText}>Sync to CSV</Text>
-                </TouchableOpacity>
+                <View style={styles.actionButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.syncButton}
+                    onPress={(e) => {
+                      e.stopPropagation(); // Prevent card navigation
+                      Alert.alert(
+                        'Sync to Project CSV', 
+                        'You have unsynced local data for this project. Would you like to add it to the project CSV in Firebase?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Sync to CSV', onPress: () => mergeLocalDataToFirebase(project.id) }
+                        ]
+                      );
+                    }}
+                  >
+                    <Ionicons name="cloud-upload-outline" size={14} color="#3B82F6" />
+                    <Text style={styles.syncButtonText}>Sync</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={(e) => {
+                      e.stopPropagation(); // Prevent card navigation
+                      deleteLocalData(project.id);
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={14} color="#F44336" />
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </TouchableOpacity>
           ))
@@ -501,20 +556,41 @@ const styles = StyleSheet.create({
     marginTop: 5,
     textAlign: 'center',
   },
-  mergeButton: {
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 8,
+  },
+  syncButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#EFF6FF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 8,
-    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    flex: 1,
+    gap: 4,
   },
-  mergeButtonText: {
-    fontSize: 12,
+  syncButtonText: {
+    fontSize: 11,
     color: '#3B82F6',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    flex: 1,
+    gap: 4,
+  },
+  deleteButtonText: {
+    fontSize: 11,
+    color: '#F44336',
     fontWeight: '600',
   },
 });

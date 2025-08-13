@@ -34,7 +34,7 @@ export default function EnhancedProjectDetailScreen() {
   const [project, setProject] = useState<Project | null>(null);
   const [records, setRecords] = useState<ProjectRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'log' | 'insights' | 'export'>('log');
+  const [activeTab, setActiveTab] = useState<'log' | 'insights' | 'details'>('log');
   const [commitLogs, setCommitLogs] = useState<Array<Record<string, any>>>([]);
   const [projectSamples, setProjectSamples] = useState<Array<Record<string, any>>>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'voice' | 'camera' | 'today'>('all');
@@ -296,16 +296,16 @@ export default function EnhancedProjectDetailScreen() {
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.tab, activeTab === 'export' && styles.activeTab]}
-            onPress={() => setActiveTab('export')}
+            style={[styles.tab, activeTab === 'details' && styles.activeTab]}
+            onPress={() => setActiveTab('details')}
           >
             <Ionicons 
-              name="download-outline" 
+              name="information-circle-outline" 
               size={20} 
-              color={activeTab === 'export' ? '#EF9144' : '#6B7280'} 
+              color={activeTab === 'details' ? '#EF9144' : '#6B7280'} 
             />
-            <Text style={[styles.tabText, activeTab === 'export' && styles.activeTabText]}>
-              Export
+            <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>
+              Details
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -482,10 +482,137 @@ export default function EnhancedProjectDetailScreen() {
         </ScrollView>
       )}
 
-      {activeTab === 'export' && (
-        <View style={styles.exportContainer}>
-          <Text style={styles.exportText}>Export functionality coming soon...</Text>
-        </View>
+      {activeTab === 'details' && (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {!project ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>Loading project details...</Text>
+            </View>
+          ) : (
+            <>
+              {/* Project Information */}
+              <View style={styles.detailsSection}>
+                <Text style={styles.detailsSectionTitle}>Project Information</Text>
+                <View style={styles.detailsCard}>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Name</Text>
+                    <Text style={styles.detailValue}>{project.name}</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Description</Text>
+                    <Text style={styles.detailValue}>{project.description || 'No description provided'}</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Created</Text>
+                    <Text style={styles.detailValue}>
+                      {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'Unknown'}
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Last Updated</Text>
+                    <Text style={styles.detailValue}>
+                      {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : 'Never'}
+                    </Text>
+                  </View>
+                  {project.databaseType && (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Database Type</Text>
+                      <Text style={styles.detailValue}>{project.databaseType}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Data Schema */}
+              <View style={styles.detailsSection}>
+                <Text style={styles.detailsSectionTitle}>Data Schema</Text>
+                {project.dataColumns && project.dataColumns.length > 0 ? (
+                  <View style={styles.detailsCard}>
+                    <Text style={styles.schemaSubtitle}>Fields ({project.dataColumns.length})</Text>
+                    {project.dataColumns.map((column, index) => (
+                      <View key={index} style={styles.schemaItem}>
+                        <View style={styles.schemaHeader}>
+                          <Text style={styles.schemaFieldName}>
+                            {typeof column === 'string' ? column : column.name || `Field ${index + 1}`}
+                          </Text>
+                          <View style={styles.schemaTypeContainer}>
+                            <Text style={styles.schemaType}>
+                              {typeof column === 'object' && column.type ? column.type : 'text'}
+                            </Text>
+                          </View>
+                        </View>
+                        {typeof column === 'object' && column.description && (
+                          <Text style={styles.schemaDescription}>{column.description}</Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.detailsCard}>
+                    <Text style={styles.emptySchemaText}>No data schema defined</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Column Annotations */}
+              {project.columnAnnotations && Object.keys(project.columnAnnotations).length > 0 && (
+                <View style={styles.detailsSection}>
+                  <Text style={styles.detailsSectionTitle}>Column Annotations</Text>
+                  <View style={styles.detailsCard}>
+                    {Object.entries(project.columnAnnotations).map(([key, value]) => (
+                      <View key={key} style={styles.detailItem}>
+                        <Text style={styles.detailLabel}>{key}</Text>
+                        <Text style={styles.detailValue}>{String(value)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* General Annotations */}
+              {project.generalAnnotations && (
+                <View style={styles.detailsSection}>
+                  <Text style={styles.detailsSectionTitle}>General Annotations</Text>
+                  <View style={styles.detailsCard}>
+                    <Text style={styles.detailValue}>{project.generalAnnotations}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* CSV Metadata */}
+              {project.csvMetadata && (
+                <View style={styles.detailsSection}>
+                  <Text style={styles.detailsSectionTitle}>Data Statistics</Text>
+                  <View style={styles.detailsCard}>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Total Rows</Text>
+                      <Text style={styles.detailValue}>{project.csvMetadata.totalRows || 0}</Text>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>File Name</Text>
+                      <Text style={styles.detailValue}>{project.csvMetadata.fileName || 'N/A'}</Text>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>File Size</Text>
+                      <Text style={styles.detailValue}>
+                        {project.csvMetadata.fileSize ? `${(project.csvMetadata.fileSize / 1024).toFixed(2)} KB` : 'N/A'}
+                      </Text>
+                    </View>
+                    {project.csvMetadata.lastUpdated && (
+                      <View style={styles.detailItem}>
+                        <Text style={styles.detailLabel}>Data Last Updated</Text>
+                        <Text style={styles.detailValue}>
+                          {new Date(project.csvMetadata.lastUpdated).toLocaleDateString()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+          <View style={{ height: 80 }} />
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -747,15 +874,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  exportContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  exportText: {
-    fontSize: 16,
-    color: '#666',
-  },
   fab: {
     position: 'absolute',
     right: 16,
@@ -815,5 +933,91 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     marginTop: 4,
+  },
+  detailsSection: {
+    marginBottom: 20,
+  },
+  detailsSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+    marginHorizontal: 4,
+  },
+  detailsCard: {
+    backgroundColor: '#FAFBFC',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  detailItem: {
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+  },
+  schemaSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  schemaItem: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    marginBottom: 8,
+  },
+  schemaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  schemaFieldName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+    flex: 1,
+  },
+  schemaTypeContainer: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  schemaType: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+  },
+  schemaDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    lineHeight: 16,
+  },
+  emptySchemaText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingVertical: 20,
   },
 });

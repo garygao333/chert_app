@@ -16,7 +16,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.chert.app",
-      buildNumber: "6",
+      buildNumber: "8",
       icon: "./assets/icon.png",
       infoPlist: {
         NSAppTransportSecurity: {

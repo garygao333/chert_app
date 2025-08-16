@@ -558,31 +558,7 @@ export default function DataRecordingScreen() {
   };
 
   const addPhoto = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images' as any,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets?.[0]) {
-        const photoMessage: ConversationMessage = {
-          id: Date.now().toString(),
-          type: 'user',
-          content: '📷 Photo added',
-          timestamp: new Date(),
-          metadata: {
-            imageFiles: [result.assets[0].uri]
-          }
-        };
-        
-        setConversation(prev => [...prev, photoMessage]);
-      }
-    } catch (error) {
-      console.error('Photo error:', error);
-      Alert.alert('Photo Error', 'Failed to add photo');
-    }
+    Alert.alert('Feature Coming Soon', 'Camera functionality will be available in a future update.');
   };
 
   // Auto-commit function for immediate saving
@@ -710,41 +686,7 @@ export default function DataRecordingScreen() {
   };
 
   const getGPSLocation = async () => {
-    try {
-      // Request location permissions
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Location permission is required to add GPS coordinates.');
-        return;
-      }
-
-      setIsProcessing(true);
-      const location = await Location.getCurrentPositionAsync({});
-      
-      const gpsMessage: ConversationMessage = {
-        id: Date.now().toString(),
-        type: 'system',
-        content: `📍 GPS location recorded: ${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`,
-        timestamp: new Date(),
-      };
-      
-      setConversation(prev => [...prev, gpsMessage]);
-      
-      // Add GPS coordinates to current record
-      const gpsField: DataField = {
-        name: 'gps_coordinates',
-        value: `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`,
-        confidence: 1.0,
-        source: 'manual'
-      };
-      
-      setCurrentRecord(prev => [...prev, gpsField]);
-      setIsProcessing(false);
-    } catch (error) {
-      console.error('GPS error:', error);
-      Alert.alert('GPS Error', 'Failed to get current location');
-      setIsProcessing(false);
-    }
+    Alert.alert('Feature Coming Soon', 'GPS location recording will be available in a future update.');
   };
 
   const getConfidenceColor = (confidence: number) => {

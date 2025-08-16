@@ -15,11 +15,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.chert.app",
-      "buildNumber": "1",
+      "buildNumber": "8",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app needs access to microphone for voice recording of archaeological data.",
-        "NSCameraUsageDescription": "This app needs access to camera for photographing archaeological artifacts.",
-        "NSLocationWhenInUseUsageDescription": "This app needs location access to record GPS coordinates of archaeological finds."
+        "NSMicrophoneUsageDescription": "This app needs microphone access to record voice memos and field notes that are saved directly to your device's local data table. For example, you can record descriptions of inventory status or site observations that will be stored in your personal project database.",
+        "NSCameraUsageDescription": "This app needs access to camera for photographing data, such as inventory or archaeological artifacts, that you would like to record to your local data table.",
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to record GPS coordinates into your local data table."
       }
     },
     "android": {

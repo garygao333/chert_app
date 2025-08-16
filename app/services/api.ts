@@ -2,8 +2,8 @@
 import type { Project, DataRecord, RecentActivity } from '../types';
 import { supabase } from './supabase';
 
-// Use local development API URL for testing
-const API_URL = 'http://localhost:8000';
+// Use production Heroku API URL
+const API_URL = 'https://chert-backend-d92c4cd51927.herokuapp.com';
 
 // API service for backend integration
 export class ApiService {

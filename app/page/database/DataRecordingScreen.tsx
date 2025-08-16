@@ -24,6 +24,8 @@ import type { Project } from '../../types';
 import FirebaseService from '../../services/firebaseService';
 import type { RootStackParamList, RecordMetadata } from '../../types';
 import { ApiService } from '../../services/api';
+import { DataProcessingService } from '../../services/dataProcessingService';
+import GISModal from '../../components/GISModal';
 
 type DataRecordingNavigationProp = StackNavigationProp<RootStackParamList>;
 type DataRecordingRouteProp = RouteProp<RootStackParamList, 'DataRecording'>;
@@ -86,6 +88,9 @@ export default function DataRecordingScreen() {
   const [projectAnalytics, setProjectAnalytics] = useState<any>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [showGISModal, setShowGISModal] = useState(false);
+  const [gisCoordinates, setGisCoordinates] = useState<{latitude: number; longitude: number} | null>(null);
+  const [isGISButtonDisabled, setIsGISButtonDisabled] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -100,6 +105,14 @@ export default function DataRecordingScreen() {
     loadPersistedSamples();
   }, [projectId]);
 
+  // Import CSV data when project with coordinates is loaded
+  useEffect(() => {
+    if (project?.gisEnabled && project?.coordinateColumns && project?.csvMetadata?.sampleRows) {
+      // Disabled automatic import of CSV sample data to prevent dummy data
+      // importCSVDataIfNeeded();
+    }
+  }, [project]);
+
   // Save samples to storage whenever recordedSamples changes
   useEffect(() => {
     savePersistedSamples();
@@ -110,6 +123,24 @@ export default function DataRecordingScreen() {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         const samples = JSON.parse(stored);
+        console.log(`DEBUG: About to load ${samples.length} persisted samples for project ${projectId}`);
+        console.log('DEBUG: Sample data preview:', samples.slice(0, 2));
+        
+        // Check if these are the old dummy samples by looking for the original coordinates
+        const dummyCoordinates = ['39.952583', '40.712776', '34.052235'];
+        const hasDummyData = samples.some((sample: any) => 
+          dummyCoordinates.includes(String(sample.fields?.Latitude)) ||
+          dummyCoordinates.includes(String(sample.Latitude))
+        );
+        
+        if (hasDummyData) {
+          console.log('🚨 DETECTED DUMMY DATA - Automatically clearing it');
+          await AsyncStorage.removeItem(STORAGE_KEY);
+          await AsyncStorage.removeItem(`csv_imported_${projectId}`);
+          setRecordedSamples([]);
+          return;
+        }
+        
         setRecordedSamples(samples);
         console.log(`Loaded ${samples.length} persisted samples for project ${projectId}`);
       }
@@ -123,6 +154,87 @@ export default function DataRecordingScreen() {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(recordedSamples));
     } catch (error) {
       console.error('Failed to save samples:', error);
+    }
+  };
+
+  const importCSVDataIfNeeded = async () => {
+    try {
+      // Check if we already have samples
+      if (recordedSamples.length > 0) {
+        return;
+      }
+
+      // Check if we already imported CSV data before
+      const importFlagKey = `csv_imported_${projectId}`;
+      const alreadyImported = await AsyncStorage.getItem(importFlagKey);
+      if (alreadyImported) {
+        console.log('📊 CSV data already imported, skipping...');
+        return;
+      }
+
+      if (!project?.csvMetadata?.sampleRows || !project?.coordinateColumns || !project?.dataColumns) {
+        return;
+      }
+
+      console.log('📊 Importing CSV data to DataRecording local storage...');
+      
+      const importedSamples: RecordedSample[] = [];
+      const latColIndex = project.dataColumns.indexOf(project.coordinateColumns.latitude);
+      const lngColIndex = project.dataColumns.indexOf(project.coordinateColumns.longitude);
+
+      if (latColIndex === -1 || lngColIndex === -1) {
+        console.warn('Could not find coordinate column indices in DataRecording');
+        return;
+      }
+
+      project.csvMetadata.sampleRows.forEach((row, index) => {
+        const cells = row.split(' | '); // Based on the log format
+        
+        if (cells.length >= project.dataColumns!.length) {
+          const sampleFields: { [key: string]: string } = {};
+          
+          project.dataColumns!.forEach((column, colIndex) => {
+            if (cells[colIndex]) {
+              sampleFields[column] = cells[colIndex].trim();
+            }
+          });
+
+          // Check if we have valid coordinates
+          const lat = parseFloat(sampleFields[project.coordinateColumns!.latitude]);
+          const lng = parseFloat(sampleFields[project.coordinateColumns!.longitude]);
+          
+          if (!isNaN(lat) && !isNaN(lng)) {
+            importedSamples.push({
+              id: `csv_import_${index}`,
+              timestamp: new Date(),
+              fields: sampleFields,
+              confidence: 1.0,
+              source: 'csv_import'
+            });
+          }
+        }
+      });
+
+      if (importedSamples.length > 0) {
+        setRecordedSamples(importedSamples);
+        // Set flag to prevent re-importing
+        await AsyncStorage.setItem(importFlagKey, 'true');
+        console.log(`✅ Imported ${importedSamples.length} samples from CSV to DataRecording`);
+      }
+    } catch (error) {
+      console.error('Error importing CSV data to DataRecording:', error);
+    }
+  };
+
+  // Debug function to clear local storage (for testing)
+  const clearLocalStorage = async () => {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      await AsyncStorage.removeItem(`csv_imported_${projectId}`);
+      setRecordedSamples([]);
+      console.log('🗑️ Cleared local storage for project');
+    } catch (error) {
+      console.error('Error clearing local storage:', error);
     }
   };
 
@@ -168,6 +280,28 @@ export default function DataRecordingScreen() {
       if (projectId) {
         try {
           const projectData = await FirebaseService.getProject(projectId);
+          
+          // Auto-detect coordinate columns if not already set
+          if (projectData.dataColumns && !projectData.gisEnabled) {
+            const detectedCoordinates = DataProcessingService.detectCoordinateColumns(projectData.dataColumns);
+            if (detectedCoordinates) {
+              projectData.gisEnabled = true;
+              projectData.coordinateColumns = detectedCoordinates;
+              console.log('✅ Auto-detected GIS coordinates in DataRecording:', detectedCoordinates);
+              
+              // Update project in Firebase with GIS settings
+              try {
+                await FirebaseService.updateProject(projectId, {
+                  gisEnabled: true,
+                  coordinateColumns: detectedCoordinates
+                });
+                console.log('✅ Updated project with GIS settings from DataRecording');
+              } catch (updateError) {
+                console.warn('Could not update project with GIS settings:', updateError);
+              }
+            }
+          }
+          
           setProject(projectData);
           
           // Load analytics data
@@ -409,8 +543,18 @@ export default function DataRecordingScreen() {
             console.log('❌ No project loaded for schema');
           }
           
+          // Prepare GIS data if available
+          let gisDataForAPI = undefined;
+          if (gisCoordinates && project?.coordinateColumns) {
+            gisDataForAPI = {
+              latitude: gisCoordinates.latitude,
+              longitude: gisCoordinates.longitude,
+              coordinateColumns: project.coordinateColumns
+            };
+          }
+          
           // Process with voice agent using mobile file object
-          const result = await ApiService.processVoiceInputMobile(fileInfo, projectId, projectSchema);
+          const result = await ApiService.processVoiceInputMobile(fileInfo, projectId, projectSchema, gisDataForAPI);
           
           const userMessage: ConversationMessage = {
             id: generateMessageId('user'),
@@ -508,8 +652,18 @@ export default function DataRecordingScreen() {
         };
       }
       
+      // Prepare GIS data if available
+      let gisDataForAPI = undefined;
+      if (gisCoordinates && project?.coordinateColumns) {
+        gisDataForAPI = {
+          latitude: gisCoordinates.latitude,
+          longitude: gisCoordinates.longitude,
+          coordinateColumns: project.coordinateColumns
+        };
+      }
+      
       // Process text through the backend
-      const result = await ApiService.processTextInput(message, projectId, projectSchema);
+      const result = await ApiService.processTextInput(message, projectId, projectSchema, gisDataForAPI);
       
       // Always show the LLM response if we have reasoning
       let assistantContent = '';
@@ -580,6 +734,13 @@ export default function DataRecordingScreen() {
         sampleFields[field.name] = field.value;
       });
       
+      // Add GIS coordinates if they exist in memory
+      if (gisCoordinates && project?.coordinateColumns) {
+        sampleFields[project.coordinateColumns.latitude] = gisCoordinates.latitude.toString();
+        sampleFields[project.coordinateColumns.longitude] = gisCoordinates.longitude.toString();
+        console.log('Added GIS coordinates to sample:', gisCoordinates);
+      }
+      
       const newSample: RecordedSample = {
         id: Date.now().toString(),
         timestamp: new Date(),
@@ -607,6 +768,12 @@ export default function DataRecordingScreen() {
       
       // Clear current record since it's been committed
       setCurrentRecord([]);
+      
+      // Clear GIS coordinates and re-enable GIS button
+      if (gisCoordinates) {
+        setGisCoordinates(null);
+        setIsGISButtonDisabled(false);
+      }
       
     } catch (error) {
       console.error('Auto-commit failed:', error);
@@ -685,8 +852,74 @@ export default function DataRecordingScreen() {
     );
   };
 
-  const getGPSLocation = async () => {
-    Alert.alert('Feature Coming Soon', 'GPS location recording will be available in a future update.');
+  const handleGISButtonPress = () => {
+    if (!project?.gisEnabled || !project?.coordinateColumns) {
+      Alert.alert(
+        'GIS Not Enabled',
+        'This project is not GIS enabled. To use GIS functionality, the project must have coordinate columns configured.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    setShowGISModal(true);
+  };
+
+  const handleGISLogWithoutProperties = async (coordinates: { latitude: number; longitude: number }) => {
+    if (!project?.coordinateColumns) return;
+    
+    try {
+      console.log('Logging GIS coordinates directly:', coordinates);
+      
+      // Create fields for the coordinate columns
+      const coordFields: { [key: string]: string } = {};
+      coordFields[project.coordinateColumns.latitude] = coordinates.latitude.toString();
+      coordFields[project.coordinateColumns.longitude] = coordinates.longitude.toString();
+      
+      const newSample: RecordedSample = {
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        fields: coordFields,
+        confidence: 1.0,
+      };
+      
+      // Add to recorded samples
+      setRecordedSamples(prev => {
+        const updated = [...prev, newSample];
+        console.log('GIS coordinates logged directly:', newSample);
+        return updated;
+      });
+      
+      // Add success message to conversation
+      const successMessage: ConversationMessage = {
+        id: Date.now().toString(),
+        type: 'system',
+        content: `📍 GIS location recorded: ${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)}`,
+        timestamp: new Date(),
+      };
+      
+      setConversation(prev => [...prev, successMessage]);
+      
+    } catch (error) {
+      console.error('GIS logging error:', error);
+      Alert.alert('Error', 'Failed to log GIS coordinates.');
+    }
+  };
+
+  const handleGISLogWithProperties = (coordinates: { latitude: number; longitude: number }) => {
+    // Store coordinates in memory and disable GIS button
+    setGisCoordinates(coordinates);
+    setIsGISButtonDisabled(true);
+    
+    // Add message to conversation indicating GIS data is ready
+    const gisMessage: ConversationMessage = {
+      id: Date.now().toString(),
+      type: 'system',
+      content: `📍 GIS coordinates ready: ${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)}. Now record additional properties through voice or text.`,
+      timestamp: new Date(),
+    };
+    
+    setConversation(prev => [...prev, gisMessage]);
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -971,6 +1204,24 @@ export default function DataRecordingScreen() {
             <Ionicons name="camera" size={20} color="#4FC3F7" />
             <Text style={styles.bottomActionText}>Photo</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.bottomActionButton} onPress={() => {
+            Alert.alert(
+              'Clear Local Data',
+              'Are you sure you want to delete all local data? This will remove all sample entries from this device.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                  text: 'Clear', 
+                  style: 'destructive', 
+                  onPress: clearLocalStorage 
+                }
+              ]
+            );
+          }}>
+            <Ionicons name="trash" size={20} color="#F44336" />
+            <Text style={styles.bottomActionText}>Clear Data</Text>
+          </TouchableOpacity>
           
           {currentRecord.length > 0 ? (
             <TouchableOpacity style={styles.bottomActionButton} onPress={commitRecord}>
@@ -1005,12 +1256,37 @@ export default function DataRecordingScreen() {
             </Animated.View>
           </View>
           
-          <TouchableOpacity style={styles.bottomActionButton} onPress={getGPSLocation} disabled={isProcessing}>
-            <Ionicons name="location" size={20} color="#4CAF50" />
-            <Text style={styles.bottomActionText}>GPS</Text>
+          <TouchableOpacity 
+            style={[
+              styles.bottomActionButton,
+              isGISButtonDisabled && styles.disabledButton
+            ]} 
+            onPress={handleGISButtonPress} 
+            disabled={isProcessing || isGISButtonDisabled}
+          >
+            <Ionicons 
+              name="location" 
+              size={20} 
+              color={isGISButtonDisabled ? "#999" : "#4CAF50"} 
+            />
+            <Text style={[
+              styles.bottomActionText,
+              isGISButtonDisabled && styles.disabledText
+            ]}>
+              GIS
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
+      
+      {/* GIS Modal */}
+      <GISModal
+        visible={showGISModal}
+        onClose={() => setShowGISModal(false)}
+        onLogWithoutProperties={handleGISLogWithoutProperties}
+        onLogWithProperties={handleGISLogWithProperties}
+        coordinateColumns={project?.coordinateColumns}
+      />
     </SafeAreaView>
   );
 }
@@ -1276,6 +1552,12 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
     fontWeight: '500',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    color: '#999',
   },
   centralRecordContainer: {
     alignItems: 'center',

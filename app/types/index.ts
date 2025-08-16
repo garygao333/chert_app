@@ -17,6 +17,12 @@ export interface Project {
   dataColumns?: string[];
   generalAnnotations?: string;
   columnAnnotations?: Record<string, string>;
+  // GIS functionality
+  gisEnabled?: boolean;
+  coordinateColumns?: {
+    latitude: string;
+    longitude: string;
+  };
   // Legacy fields for backward compatibility
   documentation?: string;
   databaseType?: string;

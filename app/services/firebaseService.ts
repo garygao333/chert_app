@@ -641,6 +641,12 @@ class FirebaseService {
 
       console.log(`DEBUG: Getting samples for project ${projectId}, user ${user.uid}`);
 
+      // Disabled loading of CSV sample data to prevent dummy data (alice, bob, carol)
+      console.log('DEBUG: CSV sample loading disabled to prevent dummy data');
+      return [];
+
+      // Original code commented out to prevent loading dummy data:
+      /*
       // Find project_csvs document
       const q = query(
         collection(db, 'project_csvs'),
@@ -665,6 +671,7 @@ class FirebaseService {
       const samples = rows.slice(0, 5);
       console.log(`DEBUG: Returning ${samples.length} samples:`, samples);
       return samples;
+      */
     } catch (error) {
       console.error('Error getting project samples:', error);
       return [];

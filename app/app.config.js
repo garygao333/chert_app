@@ -62,6 +62,9 @@ export default {
     },
     plugins: [
       "expo-av",
+      "expo-image-picker",
+      "expo-location",
+      "expo-maps",
       [
         "expo-build-properties",
         {

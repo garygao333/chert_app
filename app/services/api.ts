@@ -1,6 +1,7 @@
 // API service for backend integration
 import type { Project, DataRecord, RecentActivity } from '../types';
 import { supabase } from './supabase';
+import { DataProcessingService } from './dataProcessingService';
 
 // Use production Heroku API URL
 const API_URL = 'https://chert-backend-d92c4cd51927.herokuapp.com';
@@ -199,7 +200,12 @@ export class ApiService {
   }
 
   // AI/Voice Processing - Mobile compatible version
-  static async processVoiceInputMobile(fileInfo: { uri: string; type: string; name: string }, projectId: string, projectSchema?: any): Promise<{
+  static async processVoiceInputMobile(
+    fileInfo: { uri: string; type: string; name: string }, 
+    projectId: string, 
+    projectSchema?: any,
+    gisData?: { latitude: number; longitude: number; coordinateColumns: { latitude: string; longitude: string } }
+  ): Promise<{
     transcription: string;
     extracted_data: Record<string, any>;
     confidence: number;
@@ -227,6 +233,17 @@ export class ApiService {
       if (projectSchema) {
         formData.append('project_schema', JSON.stringify(projectSchema));
         console.log('📋 Including project schema:', projectSchema);
+      }
+      
+      // Add GIS data if available
+      if (gisData) {
+        formData.append('gis_data', JSON.stringify({
+          latitude: gisData.latitude,
+          longitude: gisData.longitude,
+          coordinate_columns: gisData.coordinateColumns,
+          force_coordinate_extraction: true
+        }));
+        console.log('📍 Including GIS data with force flag:', gisData);
       }
       
       console.log('📋 Mobile FormData prepared with:');
@@ -371,7 +388,12 @@ export class ApiService {
   }
 
   // Text Processing - Process text input through the AI agent
-  static async processTextInput(text: string, projectId: string, projectSchema?: any): Promise<{
+  static async processTextInput(
+    text: string, 
+    projectId: string, 
+    projectSchema?: any,
+    gisData?: { latitude: number; longitude: number; coordinateColumns: { latitude: string; longitude: string } }
+  ): Promise<{
     transcription: string;
     extracted_data: Record<string, any>;
     confidence: number;
@@ -384,14 +406,36 @@ export class ApiService {
     try {
       console.log('🚀 Processing text input:', text);
       
+      // Enhance text with GIS data if available
+      let enhancedText = text;
+      if (gisData) {
+        enhancedText = DataProcessingService.enhanceInputWithGISData(
+          text,
+          { latitude: gisData.latitude, longitude: gisData.longitude },
+          gisData.coordinateColumns
+        );
+        console.log('📍 Enhanced text with GIS data:', enhancedText);
+      }
+      
       const formData = new FormData();
-      formData.append('text', text);
+      formData.append('text', enhancedText);
       formData.append('project_id', projectId);
       
       // Add project schema if available
       if (projectSchema) {
         formData.append('project_schema', JSON.stringify(projectSchema));
         console.log('📋 Including project schema for text processing:', projectSchema);
+      }
+      
+      // Add GIS data if available
+      if (gisData) {
+        formData.append('gis_data', JSON.stringify({
+          latitude: gisData.latitude,
+          longitude: gisData.longitude,
+          coordinate_columns: gisData.coordinateColumns,
+          force_coordinate_extraction: true
+        }));
+        console.log('📍 Including GIS data for text processing with force flag:', gisData);
       }
       
       console.log('📋 FormData prepared with:');

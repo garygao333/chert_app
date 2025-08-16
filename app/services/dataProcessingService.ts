@@ -382,4 +382,83 @@ export class DataProcessingService {
 
     return examples.slice(0, 3);
   }
+
+  /**
+   * Detect coordinate columns from CSV data columns
+   * Looks for Latitude/Longitude, lat/lon, lat/lng, or x/y variations
+   */
+  static detectCoordinateColumns(dataColumns: string[]): {
+    latitude: string;
+    longitude: string;
+  } | null {
+    if (!dataColumns || dataColumns.length < 2) {
+      return null;
+    }
+
+    const normalizedColumns = dataColumns.map(col => ({
+      original: col,
+      normalized: col.toLowerCase().trim()
+    }));
+
+    // Latitude patterns (case-insensitive)
+    const latitudePatterns = [
+      /^latitude$/i,
+      /^lat$/i,
+      /^y$/i,
+      /^northing$/i,
+      /^north$/i
+    ];
+
+    // Longitude patterns (case-insensitive)
+    const longitudePatterns = [
+      /^longitude$/i,
+      /^lon$/i,
+      /^lng$/i,
+      /^long$/i,
+      /^x$/i,
+      /^easting$/i,
+      /^east$/i
+    ];
+
+    let latitudeColumn: string | null = null;
+    let longitudeColumn: string | null = null;
+
+    // Find latitude column
+    for (const { original, normalized } of normalizedColumns) {
+      if (latitudePatterns.some(pattern => pattern.test(normalized))) {
+        latitudeColumn = original;
+        break;
+      }
+    }
+
+    // Find longitude column
+    for (const { original, normalized } of normalizedColumns) {
+      if (longitudePatterns.some(pattern => pattern.test(normalized))) {
+        longitudeColumn = original;
+        break;
+      }
+    }
+
+    // Only return if we found both coordinate columns
+    if (latitudeColumn && longitudeColumn) {
+      return {
+        latitude: latitudeColumn,
+        longitude: longitudeColumn
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Enhance text input with GIS coordinates for LLM processing
+   */
+  static enhanceInputWithGISData(
+    originalInput: string,
+    gisData: { latitude: number; longitude: number },
+    coordinateColumns: { latitude: string; longitude: string }
+  ): string {
+    const enhancedText = `${originalInput}. The ${coordinateColumns.latitude} is ${gisData.latitude} and the ${coordinateColumns.longitude} is ${gisData.longitude}.`;
+    return enhancedText;
+  }
 }

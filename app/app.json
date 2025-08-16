@@ -42,7 +42,8 @@
     "plugins": [
       "expo-av",
       "expo-image-picker",
-      "expo-location"
+      "expo-location",
+      "expo-maps"
     ],
     "extra": {
       "apiUrl": "http://192.168.7.214:8000"

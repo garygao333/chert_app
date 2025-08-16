@@ -7,10 +7,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleMaps, AppleMaps } from 'expo-maps';
+import { Platform } from 'react-native';
 import FirebaseService from '../../services/firebaseService';
+import { DataProcessingService } from '../../services/dataProcessingService';
 import { Project, RootStackParamList } from '../../types';
 
 // Simple record type for this screen
@@ -40,6 +45,13 @@ export default function EnhancedProjectDetailScreen() {
   const [analytics, setAnalytics] = useState<Record<string, any>>({});
   const [activeFilter, setActiveFilter] = useState<'all' | 'voice' | 'camera' | 'today'>('all');
   const [searchText, setSearchText] = useState('');
+  const [gisPoints, setGisPoints] = useState<Array<{
+    id: string;
+    latitude: number;
+    longitude: number;
+    timestamp: Date;
+    properties?: Record<string, any>;
+  }>>([]);
 
   useEffect(() => {
     loadProject();
@@ -49,9 +61,38 @@ export default function EnhancedProjectDetailScreen() {
     loadAnalytics();
   }, [projectId]);
 
+  // Load GIS points after project is loaded
+  useEffect(() => {
+    if (project) {
+      loadGISPoints();
+    }
+  }, [project]);
+
   const loadProject = async () => {
     try {
       const fetchedProject = await FirebaseService.getProject(projectId);
+      
+      // Auto-detect coordinate columns if not already set
+      if (fetchedProject.dataColumns && !fetchedProject.gisEnabled) {
+        const detectedCoordinates = DataProcessingService.detectCoordinateColumns(fetchedProject.dataColumns);
+        if (detectedCoordinates) {
+          fetchedProject.gisEnabled = true;
+          fetchedProject.coordinateColumns = detectedCoordinates;
+          console.log('✅ Auto-detected GIS coordinates:', detectedCoordinates);
+          
+          // Update project in Firebase with GIS settings
+          try {
+            await FirebaseService.updateProject(projectId, {
+              gisEnabled: true,
+              coordinateColumns: detectedCoordinates
+            });
+            console.log('✅ Updated project with GIS settings');
+          } catch (updateError) {
+            console.warn('Could not update project with GIS settings:', updateError);
+          }
+        }
+      }
+      
       setProject(fetchedProject);
     } catch (error) {
       console.error('Error loading project:', error);
@@ -131,6 +172,134 @@ export default function EnhancedProjectDetailScreen() {
       console.error('Error loading records:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadGISPoints = async () => {
+    try {
+      if (!project?.gisEnabled || !project?.coordinateColumns) {
+        return;
+      }
+
+      // Load recorded samples from AsyncStorage (same as DataRecordingScreen)
+      const STORAGE_KEY = `recorded_samples_${projectId}`;
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      
+      if (stored) {
+        const samples = JSON.parse(stored);
+        const gisData: Array<{
+          id: string;
+          latitude: number;
+          longitude: number;
+          timestamp: Date;
+          properties?: Record<string, any>;
+        }> = [];
+
+        samples.forEach((sample: any) => {
+          const latField = project.coordinateColumns!.latitude;
+          const lngField = project.coordinateColumns!.longitude;
+          
+          if (sample.fields[latField] && sample.fields[lngField]) {
+            const latitude = parseFloat(sample.fields[latField]);
+            const longitude = parseFloat(sample.fields[lngField]);
+            
+            if (!isNaN(latitude) && !isNaN(longitude)) {
+              // Extract other properties (exclude coordinate fields)
+              const properties: Record<string, any> = {};
+              Object.entries(sample.fields).forEach(([key, value]) => {
+                if (key !== latField && key !== lngField) {
+                  properties[key] = value;
+                }
+              });
+
+              gisData.push({
+                id: sample.id,
+                latitude,
+                longitude,
+                timestamp: new Date(sample.timestamp),
+                properties: Object.keys(properties).length > 0 ? properties : undefined
+              });
+            }
+          }
+        });
+
+        setGisPoints(gisData);
+        console.log(`Loaded ${gisData.length} GIS points for project ${projectId}`);
+      } else if (project?.csvMetadata?.sampleRows && project?.coordinateColumns) {
+        // If no local samples but CSV data exists, try to import from CSV
+        // Disabled automatic import of CSV sample data to prevent dummy data
+        // await importCSVDataToLocal();
+      }
+    } catch (error) {
+      console.error('Error loading GIS points:', error);
+    }
+  };
+
+  const importCSVDataToLocal = async () => {
+    try {
+      if (!project?.csvMetadata?.sampleRows || !project?.coordinateColumns || !project?.dataColumns) {
+        return;
+      }
+
+      // Check if we already imported CSV data before
+      const importFlagKey = `csv_imported_${projectId}`;
+      const alreadyImported = await AsyncStorage.getItem(importFlagKey);
+      if (alreadyImported) {
+        console.log('📊 CSV data already imported to insights, skipping...');
+        return;
+      }
+
+      console.log('📊 Importing CSV data to local storage...');
+      const STORAGE_KEY = `recorded_samples_${projectId}`;
+      
+      const importedSamples: any[] = [];
+      const latColIndex = project.dataColumns.indexOf(project.coordinateColumns.latitude);
+      const lngColIndex = project.dataColumns.indexOf(project.coordinateColumns.longitude);
+
+      if (latColIndex === -1 || lngColIndex === -1) {
+        console.warn('Could not find coordinate column indices');
+        return;
+      }
+
+      project.csvMetadata.sampleRows.forEach((row, index) => {
+        const cells = row.split(' | '); // Based on the log format
+        
+        if (cells.length >= project.dataColumns!.length) {
+          const sampleFields: { [key: string]: string } = {};
+          
+          project.dataColumns!.forEach((column, colIndex) => {
+            if (cells[colIndex]) {
+              sampleFields[column] = cells[colIndex].trim();
+            }
+          });
+
+          // Check if we have valid coordinates
+          const lat = parseFloat(sampleFields[project.coordinateColumns!.latitude]);
+          const lng = parseFloat(sampleFields[project.coordinateColumns!.longitude]);
+          
+          if (!isNaN(lat) && !isNaN(lng)) {
+            importedSamples.push({
+              id: `csv_import_${index}`,
+              timestamp: new Date().toISOString(),
+              fields: sampleFields,
+              confidence: 1.0,
+              source: 'csv_import'
+            });
+          }
+        }
+      });
+
+      if (importedSamples.length > 0) {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(importedSamples));
+        // Set flag to prevent re-importing
+        await AsyncStorage.setItem(importFlagKey, 'true');
+        console.log(`✅ Imported ${importedSamples.length} samples from CSV to local storage`);
+        
+        // Reload GIS points after import
+        await loadGISPoints();
+      }
+    } catch (error) {
+      console.error('Error importing CSV data:', error);
     }
   };
 
@@ -514,6 +683,66 @@ export default function EnhancedProjectDetailScreen() {
                   </View>
                 </View>
               </View>
+
+              {/* GIS Map */}
+              {project?.gisEnabled && project?.coordinateColumns && (
+                <View style={styles.analyticsSection}>
+                  <Text style={styles.analyticsSectionTitle}>GIS Locations</Text>
+                  <View style={styles.mapContainer}>
+                    {Platform.OS === 'ios' ? (
+                      <AppleMaps.View
+                        style={styles.map}
+                        initialCamera={{
+                          target: {
+                            latitude: gisPoints[0]?.latitude || 37.7749,
+                            longitude: gisPoints[0]?.longitude || -122.4194,
+                          },
+                          zoom: gisPoints.length > 1 ? 12 : 15,
+                        }}
+                        markers={gisPoints.map((point) => ({
+                          latitude: point.latitude,
+                          longitude: point.longitude,
+                          title: `Location ${point.id}`,
+                          subtitle: point.properties
+                            ? Object.entries(point.properties)
+                                .slice(0, 3)
+                                .map(([key, value]) => `${key}: ${value}`)
+                                .join(', ')
+                            : `Recorded: ${point.timestamp.toLocaleDateString()}`
+                        }))}
+                      />
+                    ) : (
+                      <GoogleMaps.View
+                        style={styles.map}
+                        initialCamera={{
+                          target: {
+                            latitude: gisPoints[0]?.latitude || 37.7749,
+                            longitude: gisPoints[0]?.longitude || -122.4194,
+                          },
+                          zoom: gisPoints.length > 1 ? 12 : 15,
+                        }}
+                        markers={gisPoints.map((point) => ({
+                          latitude: point.latitude,
+                          longitude: point.longitude,
+                          title: `Location ${point.id}`,
+                          snippet: point.properties
+                            ? Object.entries(point.properties)
+                                .slice(0, 3)
+                                .map(([key, value]) => `${key}: ${value}`)
+                                .join(', ')
+                            : `Recorded: ${point.timestamp.toLocaleDateString()}`
+                        }))}
+                      />
+                    )}
+                    <View style={styles.mapStats}>
+                      <Text style={styles.mapStatsText}>
+                        📍 {gisPoints.length} locations recorded
+                        {gisPoints.length === 0 && " - Start recording to see data points"}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
 
               {/* Field Completeness */}
               <View style={styles.analyticsSection}>
@@ -1380,5 +1609,40 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 8,
     fontStyle: 'italic',
+  },
+  emptyAnalyticsSubtext: {
+    fontSize: 12,
+    color: '#D1D5DB',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  mapContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  map: {
+    height: 200,
+    width: '100%',
+  },
+  mapStats: {
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  mapStatsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });

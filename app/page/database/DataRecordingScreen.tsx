@@ -282,8 +282,15 @@ export default function DataRecordingScreen() {
           const projectData = await FirebaseService.getProject(projectId);
           
           // Auto-detect coordinate columns if not already set
+          console.log('DEBUG: Checking GIS auto-detection...');
+          console.log('DEBUG: projectData.dataColumns:', projectData.dataColumns);
+          console.log('DEBUG: projectData.gisEnabled:', projectData.gisEnabled);
+          
           if (projectData.dataColumns && !projectData.gisEnabled) {
+            console.log('DEBUG: Running coordinate detection...');
             const detectedCoordinates = DataProcessingService.detectCoordinateColumns(projectData.dataColumns);
+            console.log('DEBUG: Detected coordinates:', detectedCoordinates);
+            
             if (detectedCoordinates) {
               projectData.gisEnabled = true;
               projectData.coordinateColumns = detectedCoordinates;
@@ -299,7 +306,11 @@ export default function DataRecordingScreen() {
               } catch (updateError) {
                 console.warn('Could not update project with GIS settings:', updateError);
               }
+            } else {
+              console.log('DEBUG: No coordinate columns detected');
             }
+          } else {
+            console.log('DEBUG: GIS already enabled or no data columns');
           }
           
           setProject(projectData);
@@ -853,7 +864,13 @@ export default function DataRecordingScreen() {
   };
 
   const handleGISButtonPress = () => {
+    console.log('DEBUG: GIS button pressed');
+    console.log('DEBUG: project.gisEnabled:', project?.gisEnabled);
+    console.log('DEBUG: project.coordinateColumns:', project?.coordinateColumns);
+    console.log('DEBUG: project.dataColumns:', project?.dataColumns);
+    
     if (!project?.gisEnabled || !project?.coordinateColumns) {
+      console.log('DEBUG: GIS check failed - showing alert');
       Alert.alert(
         'GIS Not Enabled',
         'This project is not GIS enabled. To use GIS functionality, the project must have coordinate columns configured.',
@@ -862,6 +879,7 @@ export default function DataRecordingScreen() {
       return;
     }
     
+    console.log('DEBUG: GIS enabled - showing modal');
     setShowGISModal(true);
   };
 

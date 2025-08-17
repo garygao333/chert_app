@@ -641,12 +641,6 @@ class FirebaseService {
 
       console.log(`DEBUG: Getting samples for project ${projectId}, user ${user.uid}`);
 
-      // Disabled loading of CSV sample data to prevent dummy data (alice, bob, carol)
-      console.log('DEBUG: CSV sample loading disabled to prevent dummy data');
-      return [];
-
-      // Original code commented out to prevent loading dummy data:
-      /*
       // Find project_csvs document
       const q = query(
         collection(db, 'project_csvs'),
@@ -664,14 +658,20 @@ class FirebaseService {
 
       const csvData = querySnapshot.docs[0].data();
       const rows = csvData.rows || [];
-      console.log(`DEBUG: CSV data for samples:`, csvData);
       console.log(`DEBUG: Total rows available: ${rows.length}`);
 
-      // Return first 5 rows
-      const samples = rows.slice(0, 5);
-      console.log(`DEBUG: Returning ${samples.length} samples:`, samples);
+      // Filter out specific dummy data coordinates (more precise filtering)
+      const dummyCoordinates = ['39.952583', '40.712776', '34.052235'];
+      const filteredRows = rows.filter((row: any) => {
+        const rowString = JSON.stringify(row);
+        // Only filter out rows that contain the exact dummy coordinates
+        return !dummyCoordinates.some(coordinate => rowString.includes(coordinate));
+      });
+
+      // Return first 5 non-dummy rows
+      const samples = filteredRows.slice(0, 5);
+      console.log(`DEBUG: Returning ${samples.length} filtered samples (excluded dummy data):`, samples);
       return samples;
-      */
     } catch (error) {
       console.error('Error getting project samples:', error);
       return [];

@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GoogleMaps, AppleMaps } from 'expo-maps';
+import LeafletMap from '../../components/LeafletMap';
 import { Platform } from 'react-native';
 import FirebaseService from '../../services/firebaseService';
 import { DataProcessingService } from '../../services/dataProcessingService';
@@ -181,19 +181,24 @@ export default function EnhancedProjectDetailScreen() {
         return;
       }
 
-      // Load recorded samples from AsyncStorage (same as DataRecordingScreen)
+      console.log('🗺️ Loading GIS points for project:', projectId);
+      const gisData: Array<{
+        id: string;
+        latitude: number;
+        longitude: number;
+        timestamp: Date;
+        properties?: Record<string, any>;
+      }> = [];
+
+      // Try to load from multiple sources
+      
+      // 1. Load from local AsyncStorage first
       const STORAGE_KEY = `recorded_samples_${projectId}`;
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       
       if (stored) {
         const samples = JSON.parse(stored);
-        const gisData: Array<{
-          id: string;
-          latitude: number;
-          longitude: number;
-          timestamp: Date;
-          properties?: Record<string, any>;
-        }> = [];
+        console.log(`🗺️ Found ${samples.length} local samples`);
 
         samples.forEach((sample: any) => {
           const latField = project.coordinateColumns!.latitude;
@@ -222,13 +227,88 @@ export default function EnhancedProjectDetailScreen() {
             }
           }
         });
+      }
 
-        setGisPoints(gisData);
-        console.log(`Loaded ${gisData.length} GIS points for project ${projectId}`);
-      } else if (project?.csvMetadata?.sampleRows && project?.coordinateColumns) {
-        // If no local samples but CSV data exists, try to import from CSV
-        // Disabled automatic import of CSV sample data to prevent dummy data
-        // await importCSVDataToLocal();
+      // 2. If no local data, try to get from Firebase project samples
+      if (gisData.length === 0) {
+        console.log('🗺️ No local GIS data, trying Firebase project samples...');
+        try {
+          const projectSamplesData = await FirebaseService.getProjectSamples(projectId);
+          console.log(`🗺️ Found ${projectSamplesData.length} Firebase samples`);
+          
+          projectSamplesData.forEach((sample: any, index: number) => {
+            const latField = project.coordinateColumns!.latitude;
+            const lngField = project.coordinateColumns!.longitude;
+            
+            const latitude = parseFloat(sample[latField]);
+            const longitude = parseFloat(sample[lngField]);
+            
+            if (!isNaN(latitude) && !isNaN(longitude)) {
+              // Extract other properties (exclude coordinate fields)
+              const properties: Record<string, any> = {};
+              Object.entries(sample).forEach(([key, value]) => {
+                if (key !== latField && key !== lngField && key !== 'timestamp' && key !== 'confidence') {
+                  properties[key] = value;
+                }
+              });
+
+              gisData.push({
+                id: `firebase_${index}`,
+                latitude,
+                longitude,
+                timestamp: sample.timestamp ? new Date(sample.timestamp) : new Date(),
+                properties: Object.keys(properties).length > 0 ? properties : undefined
+              });
+            }
+          });
+        } catch (firebaseError) {
+          console.log('🗺️ Firebase samples not available, checking analytics...');
+        }
+      }
+
+      // 3. Always try analytics as additional source (regardless of Firebase availability)
+      if (analytics.recentActivity && analytics.recentActivity.length > 0) {
+        console.log(`🗺️ Checking ${analytics.recentActivity.length} analytics entries for additional GIS data`);
+        
+        analytics.recentActivity.forEach((activity: any, index: number) => {
+          const latField = project.coordinateColumns!.latitude;
+          const lngField = project.coordinateColumns!.longitude;
+          
+          const latitude = parseFloat(activity[latField]);
+          const longitude = parseFloat(activity[lngField]);
+          
+          console.log(`🗺️ Analytics entry ${index}: lat=${activity[latField]}, lng=${activity[lngField]} -> parsed: ${latitude}, ${longitude}`);
+          
+          if (!isNaN(latitude) && !isNaN(longitude)) {
+            // Extract other properties (exclude coordinate fields)
+            const properties: Record<string, any> = {};
+            Object.entries(activity).forEach(([key, value]) => {
+              if (key !== latField && key !== lngField && key !== 'timestamp' && key !== 'confidence') {
+                properties[key] = value;
+              }
+            });
+
+            gisData.push({
+              id: `analytics_${index}`,
+              latitude,
+              longitude,
+              timestamp: activity.timestamp ? new Date(activity.timestamp) : new Date(),
+              properties: Object.keys(properties).length > 0 ? properties : undefined
+            });
+            console.log(`🗺️ Added analytics GIS point: ${latitude}, ${longitude}`);
+          } else {
+            console.log(`🗺️ Skipped analytics entry ${index}: invalid coordinates`);
+          }
+        });
+      } else {
+        console.log('🗺️ No analytics data available for GIS points');
+      }
+
+      setGisPoints(gisData);
+      console.log(`🗺️ Loaded ${gisData.length} total GIS points for project ${projectId}`);
+      
+      if (gisData.length > 0) {
+        console.log('🗺️ Sample GIS point:', gisData[0]);
       }
     } catch (error) {
       console.error('Error loading GIS points:', error);
@@ -684,62 +764,39 @@ export default function EnhancedProjectDetailScreen() {
                 </View>
               </View>
 
-              {/* GIS Map */}
+              {/* GIS Map Section */}
               {project?.gisEnabled && project?.coordinateColumns && (
                 <View style={styles.analyticsSection}>
                   <Text style={styles.analyticsSectionTitle}>GIS Locations</Text>
                   <View style={styles.mapContainer}>
-                    {Platform.OS === 'ios' ? (
-                      <AppleMaps.View
-                        style={styles.map}
-                        initialCamera={{
-                          target: {
-                            latitude: gisPoints[0]?.latitude || 37.7749,
-                            longitude: gisPoints[0]?.longitude || -122.4194,
-                          },
-                          zoom: gisPoints.length > 1 ? 12 : 15,
-                        }}
-                        markers={gisPoints.map((point) => ({
-                          latitude: point.latitude,
-                          longitude: point.longitude,
-                          title: `Location ${point.id}`,
-                          subtitle: point.properties
-                            ? Object.entries(point.properties)
-                                .slice(0, 3)
-                                .map(([key, value]) => `${key}: ${value}`)
-                                .join(', ')
-                            : `Recorded: ${point.timestamp.toLocaleDateString()}`
-                        }))}
-                      />
+                    {gisPoints.length > 0 ? (
+                      <>
+                        <LeafletMap
+                          gisPoints={gisPoints}
+                          style={styles.map}
+                          onReady={() => {
+                            console.log('🗺️ Leaflet map ready with', gisPoints.length, 'markers');
+                          }}
+                          onError={(error) => {
+                            console.error('🗺️ Leaflet map error:', error);
+                          }}
+                        />
+                        <View style={styles.mapStats}>
+                          <Text style={styles.mapStatsText}>
+                            📍 {gisPoints.length} locations recorded
+                          </Text>
+                        </View>
+                      </>
                     ) : (
-                      <GoogleMaps.View
-                        style={styles.map}
-                        initialCamera={{
-                          target: {
-                            latitude: gisPoints[0]?.latitude || 37.7749,
-                            longitude: gisPoints[0]?.longitude || -122.4194,
-                          },
-                          zoom: gisPoints.length > 1 ? 12 : 15,
-                        }}
-                        markers={gisPoints.map((point) => ({
-                          latitude: point.latitude,
-                          longitude: point.longitude,
-                          title: `Location ${point.id}`,
-                          snippet: point.properties
-                            ? Object.entries(point.properties)
-                                .slice(0, 3)
-                                .map(([key, value]) => `${key}: ${value}`)
-                                .join(', ')
-                            : `Recorded: ${point.timestamp.toLocaleDateString()}`
-                        }))}
-                      />
+                      <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6' }]}>
+                        <Text style={styles.mapStatsText}>
+                          📍 No locations recorded yet
+                        </Text>
+                        <Text style={[styles.mapStatsText, { fontSize: 12, marginTop: 4 }]}>
+                          Start recording to see data points on the map
+                        </Text>
+                      </View>
                     )}
-                    <View style={styles.mapStats}>
-                      <Text style={styles.mapStatsText}>
-                        📍 {gisPoints.length} locations recorded
-                        {gisPoints.length === 0 && " - Start recording to see data points"}
-                      </Text>
-                    </View>
                   </View>
                 </View>
               )}
